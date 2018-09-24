@@ -1,0 +1,1 @@
+CUDA Implementation of Killing Fusion, from the paper http://campar.in.tum.de/pub/slavcheva2017cvpr/slavcheva2017cvpr.pdf
