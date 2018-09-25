@@ -5,7 +5,7 @@
 #ifndef TUM_HELPER_CUH
 #define TUM_HELPER_CUH
 
-#include <cuda_runtime.h>
+#include "mat.h"
 #include <ctime>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>

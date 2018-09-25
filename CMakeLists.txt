@@ -15,22 +15,26 @@ IF(NOT CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 ENDIF()
 
+# CMake paths
+# Externals directories (from environment variable "EXT")
+LIST(APPEND CMAKE_PREFIX_PATH "$ENV{EXT}")
+# include files in cmake subfolder
+LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 # CMake executable output path
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # ------------------------------------------------------------------------
 # dependencies
-
-# Eigen
-SET(EIGEN_ROOT ${PROJECT_SOURCE_DIR}/third_party/include/)
-FIND_PACKAGE(Eigen REQUIRED)
-INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
 
 # CUDA
 FIND_PACKAGE(CUDA REQUIRED)
 SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-arch sm_35)
 SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v --use_fast_math -O3 --compiler-options -Wall)
+
+# Eigen
+FIND_PACKAGE(Eigen3 REQUIRED)
+INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
 
 # OpenCV
 FIND_PACKAGE(OpenCV 2.4.8 COMPONENTS core highgui imgproc video REQUIRED
@@ -79,9 +83,6 @@ ADD_DEFINITIONS(-DKILLINGFUSION_SOURCE_DIR=${PROJECT_SOURCE_DIR})
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # ------------------------------------------------------------------------
-# exercise applications
-
-
 # executable
 SET(APP_NAME "killingfusion")
 CUDA_ADD_EXECUTABLE(${APP_NAME}
@@ -89,6 +90,7 @@ CUDA_ADD_EXECUTABLE(${APP_NAME}
         src/tsdf_volume.h src/tsdf_volume.cpp
         src/dataset.h src/dataset.cpp
         src/helper.cuh src/helper.cu
+        src/mat.h
         src/main.cu
 )
 TARGET_LINK_LIBRARIES(${APP_NAME} ${OpenCV_LIBS})

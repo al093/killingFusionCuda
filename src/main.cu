@@ -1,10 +1,8 @@
 #include <iostream>
 #include <vector>
 
-#ifndef WIN64
-    #define EIGEN_DONT_ALIGN_STATICALLY
-#endif
-#include <Eigen/Dense>
+#include "mat.h"
+#include <cuda_runtime.h>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
