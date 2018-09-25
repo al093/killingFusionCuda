@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     std::cout << "K: " << std::endl << K << std::endl;
 
     // create tsdf volume
-    Vec3i volDim(80, 80, 80);
+    Vec3i volDim(256, 256, 256);
     Vec3f volSize(1.0f, 1.0f, 1.0f);
     TSDFVolume* tsdf = new TSDFVolume(volDim, volSize, K);
 
