@@ -6,6 +6,7 @@
 #define TUM_HELPER_CUH
 
 #include "mat.h"
+#include <cuda_runtime_api.h>
 #include <ctime>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>

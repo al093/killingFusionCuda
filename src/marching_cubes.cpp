@@ -1,6 +1,12 @@
 #include "marching_cubes.h"
 
 #include <fstream>
+#include <boost/tuple/tuple.hpp>
+#include <boost/tuple/tuple_comparison.hpp>
+
+
+typedef boost::tuple<double, double, double> tuple3;
+
 
 MarchingCubes::MarchingCubes(const Vec3i &dimensions, const Vec3f &size) :
     dim_(dimensions),

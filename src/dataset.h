@@ -16,5 +16,6 @@ bool loadIntrinsics(const std::string &intrinsicsFile, Eigen::Matrix3f &K);
 
 bool loadFrame(const std::string &folder, size_t index, cv::Mat &color, cv::Mat &depth, cv::Mat &mask);
 
+void filterDepth(const cv::Mat &mask, cv::Mat &depth);
 
 #endif

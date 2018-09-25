@@ -6,8 +6,6 @@
 #include "mat.h"
 
 #include <map>
-#include <boost/tuple/tuple.hpp>
-#include <boost/tuple/tuple_comparison.hpp>
 
 class MarchingCubes
 {
@@ -21,7 +19,6 @@ public:
     bool savePly(const std::string &filename) const;
 
 protected:
-    typedef boost::tuple<double, double, double> tuple3;
 
     inline int computeLutIndex(int i, int j, int k, float isoValue);
 

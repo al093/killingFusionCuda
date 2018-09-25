@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "mat.h"
+
 #include <cuda_runtime.h>
 
 #include <opencv2/core/core.hpp>
@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
     // parse command line parameters
     const char *params = {
         "{i|input| |input rgb-d sequence}"
-        "{f|frames|0|number of frames to process (0=all)}"
+        "{f|frames|10000|number of frames to process (0=all)}"
         "{n|iterations|100|max number of GD iterations}"
     };
     cv::CommandLineParser cmd(argc, argv, params);
@@ -105,17 +106,20 @@ int main(int argc, char *argv[])
         //std::cerr << "No input sequence specified!" << std::endl;
         //return 1;
     }
+    std::cout << "input sequence: " << inputSequence << std::endl;
     // number of frames to process
     size_t frames = (size_t)cmd.get<int>("frames");
+    std::cout << "# frames: " << frames << std::endl;
     // max number of GD iterations
     size_t iterations = (size_t)cmd.get<int>("iterations");
+    std::cout << "iterations: " << iterations << std::endl;
 
     // initialize cuda context
     cudaDeviceSynchronize(); CUDA_CHECK;
 
     // load camera intrinsics
     Eigen::Matrix3f K;
-    if (loadIntrinsics(inputSequence + "/intrinsics_kinect1.txt", K))
+    if (!loadIntrinsics(inputSequence + "/intrinsics_kinect1.txt", K))
     {
         std::cerr << "No intrinsics file found!" << std::endl;
         return 1;
@@ -133,16 +137,20 @@ int main(int argc, char *argv[])
     cv::namedWindow("mask");
 
     // process frames
-    Mat4f firstPoseInv = Mat4f::Identity();
+    Mat4f poseVolume = Mat4f::Identity();
     cv::Mat color, depth, mask;
     for (size_t i = 0; i < frames; ++i)
     {
         // load input frame
         if (!loadFrame(inputSequence, i, color, depth, mask))
         {
-            std::cerr << "Frame " << i << " could not be loaded!" << std::endl;
-            return 1;
+            //std::cerr << "Frame " << i << " could not be loaded!" << std::endl;
+            //return 1;
+            break;
         }
+
+        // filter depth values outside of mask
+        filterDepth(mask, depth);
 
         // show input images
         cv::imshow("color", color);
@@ -151,28 +159,31 @@ int main(int argc, char *argv[])
         cv::waitKey();
 
         // get initial volume pose from centroid of first depth map
-        Mat4f poseWorld = Mat4f::Identity();
         if (i == 0)
         {
             // initial pose for volume by computing centroid of first depth/vertex map
             cv::Mat vertMap;
             depthToVertexMap(K, depth, vertMap);
             Vec3f transCentroid = centroid(vertMap);
-            poseWorld.topRightCorner<3,1>() = -transCentroid;
-            std::cout << "pose centroid" << std::endl << poseWorld << std::endl;
-            firstPoseInv = pose.inverse();
-            poseWorld = poseWorld * firstPoseInv;
-            std::cout << "pose to world" << std::endl << poseWorld << std::endl;
+            poseVolume.topRightCorner<3,1>() = transCentroid;
+            std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
         }
         // integrate frame into tsdf volume
-        tsdf->integrate(poseWorld, color, depth);
+        tsdf->integrate(poseVolume, color, depth);
     }
 
     // extract mesh using marching cubes
+    std::cout << "Extracting mesh..." << std::endl;
     MarchingCubes mc(volDim, volSize);
     mc.computeIsoSurface(tsdf->ptrTsdf(), tsdf->ptrTsdfWeights(), tsdf->ptrColorR(), tsdf->ptrColorG(), tsdf->ptrColorB());
+
     // save mesh
-    mc.savePly(inputSequence + "/mesh.ply");
+    std::cout << "Saving mesh..." << std::endl;
+    const std::string meshFilename = inputSequence + "/mesh.ply";
+    if (!mc.savePly(meshFilename))
+    {
+        std::cerr << "Could not save mesh!" << std::endl;
+    }
 
     // clean up
     delete tsdf;

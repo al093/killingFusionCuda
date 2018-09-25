@@ -30,7 +30,7 @@ bool loadIntrinsics(const std::string &intrinsicsFile, Eigen::Matrix3f &K)
     for (size_t i = 0; i < 3; ++i) {
         for (size_t j = 0; j < 3; ++j) {
             intrIn >> fVal;
-            kMat(i, j) = fVal;
+            K(i, j) = fVal;
         }
     }
     intrIn.close();
@@ -68,4 +68,19 @@ bool loadFrame(const std::string &folder, size_t index, cv::Mat &color, cv::Mat 
 }
 
 
-#endif
+void filterDepth(const cv::Mat &mask, cv::Mat &depth)
+{
+    for (int y = 0; y < depth.rows; ++y)
+    {
+        for (int x = 0; x < depth.cols; ++x)
+        {
+            cv::Vec3b maskVal = mask.at<cv::Vec3b>(y, x);
+            float val = depth.at<float>(y, x);
+            if (!maskVal[0] > 0 || val == 0.0f || std::isnan(val))
+            {
+                //depth.at<float>(y,x) = std::numeric_limits<float>::quiet_NaN();
+                depth.at<float>(y, x) = 0.0f;
+            }
+        }
+    }
+}

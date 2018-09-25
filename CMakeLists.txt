@@ -11,7 +11,7 @@ PROJECT(KillingFusionCuda LANGUAGES C CXX)
 # ------------------------------------------------------------------------
 # CMake configuration
 IF(NOT CMAKE_BUILD_TYPE)
-	# CMAKE_BUILD_TYPE: RelWithDebInfo, Release or Debug
+    # CMAKE_BUILD_TYPE: RelWithDebInfo, Release or Debug
     SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 ENDIF()
 
@@ -33,8 +33,9 @@ SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-arch sm_35)
 SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v --use_fast_math -O3 --compiler-options -Wall)
 
 # Eigen
-FIND_PACKAGE(Eigen3 REQUIRED)
-INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
+#SET(EIGEN_ROOT ${PROJECT_SOURCE_DIR}/third_party/include/eigen3)
+FIND_PACKAGE(Eigen REQUIRED)
+INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
 
 # OpenCV
 FIND_PACKAGE(OpenCV 2.4.8 COMPONENTS core highgui imgproc video REQUIRED
@@ -95,5 +96,3 @@ CUDA_ADD_EXECUTABLE(${APP_NAME}
 )
 TARGET_LINK_LIBRARIES(${APP_NAME} ${OpenCV_LIBS})
 TARGET_COMPILE_OPTIONS(${APP_NAME} PRIVATE -std=c++11)
-
-

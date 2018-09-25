@@ -1,4 +1,4 @@
 /CMakeLists.txt.user
 /build
-/build/*.ply
+/data/*.ply
 
