@@ -14,6 +14,7 @@
 #include "dataset.h"
 #include "tsdf_volume.h"
 #include "marching_cubes.h"
+#include "optimizer.cuh"
 
 
 #define STR1(x)  #x
@@ -127,9 +128,19 @@ int main(int argc, char *argv[])
     std::cout << "K: " << std::endl << K << std::endl;
 
     // create tsdf volume
-    Vec3i volDim(256, 256, 256);
+	size_t gridW = 256, gridH = 256, gridD = 256;
+	float alpha = 0.1, wk = 0.5, ws = 0.2;
+    Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(1.0f, 1.0f, 1.0f);
-    TSDFVolume* tsdf = new TSDFVolume(volDim, volSize, K);
+    TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K);
+	TSDFVolume* tsdfLive = new TSDFVolume(volDim, volSize, K);
+	float* deformationU = new float[gridW*gridH*gridD];
+	float* deformationV = new float[gridW*gridH*gridD];
+	float* deformationW = new float[gridW*gridH*gridD];
+	std::memset(deformationU, 0, (gridW*gridH*gridD)*sizeof(float));
+	std::memset(deformationV, 0, (gridW*gridH*gridD)*sizeof(float));
+	std::memset(deformationW, 0, (gridW*gridH*gridD)*sizeof(float));
+	Optimizer* optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gridW, gridH, gridD);
 
     // create windows
     cv::namedWindow("color");
@@ -167,15 +178,32 @@ int main(int argc, char *argv[])
             Vec3f transCentroid = centroid(vertMap);
             poseVolume.topRightCorner<3,1>() = transCentroid;
             std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
+			tsdfGlobal->integrate(poseVolume, color, depth);
         }
+		else
+		{
+            // initial pose for volume by computing centroid of first depth/vertex map
+            cv::Mat vertMap;
+            depthToVertexMap(K, depth, vertMap);
+            Vec3f transCentroid = centroid(vertMap);
+            poseVolume.topRightCorner<3,1>() = transCentroid;
+            std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
+			// integrate frame into tsdf volume
+        	tsdfLive->integrate(poseVolume, color, depth);
+
+			// TODO: perform optimization
+			optimizer->optimize(deformationU, deformationV, deformationW, tsdfLive);
+			// TODO: update global model
+			
+		}
         // integrate frame into tsdf volume
-        tsdf->integrate(poseVolume, color, depth);
+        
     }
 
     // extract mesh using marching cubes
     std::cout << "Extracting mesh..." << std::endl;
     MarchingCubes mc(volDim, volSize);
-    mc.computeIsoSurface(tsdf->ptrTsdf(), tsdf->ptrTsdfWeights(), tsdf->ptrColorR(), tsdf->ptrColorG(), tsdf->ptrColorB());
+    mc.computeIsoSurface(tsdfGlobal->ptrTsdf(), tsdfGlobal->ptrTsdfWeights(), tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
 
     // save mesh
     std::cout << "Saving mesh..." << std::endl;
@@ -186,7 +214,9 @@ int main(int argc, char *argv[])
     }
 
     // clean up
-    delete tsdf;
+    delete tsdfGlobal;
+	delete tsdfLive;
+	delete optimizer;
     cv::destroyAllWindows();
 
     return 0;

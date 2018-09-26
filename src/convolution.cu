@@ -200,7 +200,7 @@ void computeConvolution3DGlobalMemKernel(float* gridOut, const float* gridIn, co
 					size_t yCoord = min(max(y + j - kradius, 0), h - 1);
 					size_t zCoord = min(max(z + k - kradius, 0), z - 1);
 					size_t indVoxelShift = xCoord + (size_t)w*yCoord + sliceSize*zCoord;
-					size_t indKernel = i + (size_t)(2*kradius + 1)*j;
+					size_t indKernel = i + (size_t)(2*kradius + 1)*j + (size_t)(2*kradius + 1)*(2*kradius + 1)*k;
 					sumVoxels = sumVoxels + gridIn[indVoxelShift] * kernel[indKernel];
 				}
 			}
@@ -384,7 +384,7 @@ void computeConvolution3D(float *gridOut, const float *gridIn, const float* kern
     }
 
     // calculate block and grid size
-    dim3 block(32, 8, 8);
+    dim3 block(32, 8, 3);
     dim3 grid = computeGrid3D(block, w, h, d);
 
     // run cuda kernel

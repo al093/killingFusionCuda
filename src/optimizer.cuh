@@ -21,20 +21,20 @@ class Optimizer
 {
 public:
 
-    Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformation, const float alpha, const float wk, const float ws, const size_t gridW, const size_t gridH, const size_t gridD);
+    Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha, const float wk, const float ws, const size_t gridW, const size_t gridH, const size_t gridD);
     ~Optimizer();
 
-	void optimize(float* optimDeformation, TSDFVolume* tsdfLive);
+	void optimize(float* optimDeformationU, float* optimDeformationV, float* optimDeformationW, TSDFVolume* tsdfLive);
 
 protected:
 	void allocateMemoryInDevice();
 	void copyArraysToDevice();
 
-	void computeDivergence(float* divOut, const float* deformationIn, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
+	void computeDivergence(float* divOut, const float* deformationInU, const float* deformationInV, const float* deformationInW, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
 
     TSDFVolume* m_tsdfGlobal;
-    float* m_deformationField;
-	float* m_d_deformationField;
+    float* m_deformationFieldU, * m_deformationFieldV, * m_deformationFieldW;
+	float* m_d_deformationFieldU, * m_d_deformationFieldV, * m_d_deformationFieldW;
     float m_alpha;
 	float m_wk;
 	float m_ws;

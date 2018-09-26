@@ -22,17 +22,17 @@ void cuda_check(std::string file, int line);
 // compute grid size from block size
 inline dim3 computeGrid1D(const dim3 &block, const int w)
 {
-    return dim3(0, 0, 0);   // TODO (3.2) compute 1D grid size from block size
+    return dim3((w + block.x - 1) / block.x, 1, 1);   // compute 1D grid size from block size
 }
 
 inline dim3 computeGrid2D(const dim3 &block, const int w, const int h)
 {
-    return dim3(0, 0, 0);   // TODO (3.2) compute 2D grid size from block size
+    return dim3((w + block.x - 1) / block.x, (h + block.y - 1) / block.y, 1);   // compute 2D grid size from block size
 }
 
 inline dim3 computeGrid3D(const dim3 &block, const int w, const int h, const int s)
 {
-    return dim3(0, 0, 0);   // TODO (3.2) compute 3D grid size from block size
+    return dim3((w + block.x - 1) / block.x, (h + block.y - 1) / block.y, (s + block.z - 1) / block.z);   // compute 3D grid size from block size
 }
 
 
