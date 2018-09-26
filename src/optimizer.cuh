@@ -1,0 +1,51 @@
+#include <opencv2/core/core.hpp>
+#include "mat.h"
+#include "tsdf_volume.h"
+
+
+
+const float MAX_VECTOR_UPDATE_THRESHOLD = 0.1;
+const float m_kernelDxCentralDiff[27] = {0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
+									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+const float m_kernelDyCentralDiff[27] = {0.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
+									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+const float m_kernelDzCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+									   0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f};
+
+
+
+class Optimizer
+{
+public:
+
+    Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformation, const float alpha, const float wk, const float ws, const size_t gridW, const size_t gridH, const size_t gridD);
+    ~Optimizer();
+
+	void optimize(float* optimDeformation, TSDFVolume* tsdfLive);
+
+protected:
+	void allocateMemoryInDevice();
+	void copyArraysToDevice();
+
+	void computeDivergence(float* divOut, const float* deformationIn, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
+
+    TSDFVolume* m_tsdfGlobal;
+    float* m_deformationField;
+	float* m_d_deformationField;
+    float m_alpha;
+	float m_wk;
+	float m_ws;
+	const size_t m_gridW, m_gridH, m_gridD;
+
+	float* m_d_kernelDx = NULL;
+	float* m_d_kernelDy = NULL;
+	float* m_d_kernelDz = NULL;
+	float* m_d_dx = NULL;
+	float* m_d_dy = NULL;
+	float* m_d_dz = NULL;
+	float* m_d_div = NULL;
+};
+
