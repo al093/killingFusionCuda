@@ -85,7 +85,20 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # ------------------------------------------------------------------------
 # executable
-SET(APP_NAME "killingfusion")
+#SET(APP_NAME "killingfusion")
+#CUDA_ADD_EXECUTABLE(${APP_NAME}
+#        src/marching_cubes.h src/marching_cubes.cpp
+#        src/tsdf_volume.h src/tsdf_volume.cpp
+#        src/dataset.h src/dataset.cpp
+#        src/helper.cuh src/helper.cu
+#		src/convolution.cuh src/convolution.cu
+#		src/divergence.cuh src/divergence.cu
+#		src/optimizer.cuh src/optimizer.cu
+#        src/mat.h
+#        src/main.cu
+#)
+
+SET(APP_NAME "testFunctions")
 CUDA_ADD_EXECUTABLE(${APP_NAME}
         src/marching_cubes.h src/marching_cubes.cpp
         src/tsdf_volume.h src/tsdf_volume.cpp
@@ -95,7 +108,7 @@ CUDA_ADD_EXECUTABLE(${APP_NAME}
 		src/divergence.cuh src/divergence.cu
 		src/optimizer.cuh src/optimizer.cu
         src/mat.h
-        src/main.cu
+        src/testFunctions.cu
 )
 TARGET_LINK_LIBRARIES(${APP_NAME} ${OpenCV_LIBS})
 TARGET_COMPILE_OPTIONS(${APP_NAME} PRIVATE -std=c++11)
