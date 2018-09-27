@@ -198,9 +198,9 @@ void computeConvolution3DGlobalMemKernel(float* gridOut, const float* gridIn, co
 					// Check boundary conditions
 					size_t xCoord = min(max(x + i - kradius, 0), w - 1);
 					size_t yCoord = min(max(y + j - kradius, 0), h - 1);
-					size_t zCoord = min(max(z + k - kradius, 0), z - 1);
+					size_t zCoord = min(max(z + k - kradius, 0), d - 1);
 					size_t indVoxelShift = xCoord + (size_t)w*yCoord + sliceSize*zCoord;
-					size_t indKernel = i + (size_t)(2*kradius + 1)*j + (size_t)(2*kradius + 1)*(2*kradius + 1)*k;
+					size_t indKernel = i + (size_t)l*j + (size_t)l*l*k;
 					sumVoxels = sumVoxels + gridIn[indVoxelShift] * kernel[indKernel];
 				}
 			}
