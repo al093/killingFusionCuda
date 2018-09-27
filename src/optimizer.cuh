@@ -32,6 +32,7 @@ protected:
 	void computeGradient(float* gradOutX, float* gradOutY, float* gradOutZ, const float* gridIn, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
 	void computeDivergence(float* divOut, const float* gridInU, const float* gridInV, const float* gridInW, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
 	void computeLapacian(float* lapOut, const float* deformationIn, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d);
+	void computeHessian(float* hessOutXX, float* hessOutXY, float* hessOutXZ, float* hessOutYY, float* hessOutYZ, float* hessOutZZ, const float* gradX, const float* gradY, const float* gradZ, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d);
 	void getSlice(float* sliceOut, const float* gridIn, size_t sliceInd);
 
     TSDFVolume* m_tsdfGlobal;
@@ -55,6 +56,15 @@ protected:
 	float* m_d_dux = NULL;
 	float* m_d_duy = NULL;
 	float* m_d_duz = NULL;
+
+	// Hessian
+	float* m_d_hessXX = NULL;
+	float* m_d_hessXY = NULL;
+	float* m_d_hessXZ = NULL;
+	float* m_d_hessYY = NULL;
+	float* m_d_hessYZ = NULL;
+	float* m_d_hessZZ = NULL;
+
 	/*float* m_d_dvx = NULL;
 	float* m_d_dvy = NULL;
 	float* m_d_dvz = NULL;
