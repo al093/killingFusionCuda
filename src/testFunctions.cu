@@ -25,6 +25,13 @@
 typedef Eigen::Matrix<float, 6, 6> Mat6f;
 typedef Eigen::Matrix<float, 6, 1> Vec6f;
 
+// ########################################################################
+// Practical Course: GPU Programming in Computer Vision
+// Technical University of Munich, Computer Vision Group
+// ########################################################################
+
+#include <string>
+
 const float kernelDxCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.5f, 0.0f, -0.5f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -35,242 +42,208 @@ const float kernelDzCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f};
 
-
-bool depthToVertexMap(const Mat3f &K, const cv::Mat &depth, cv::Mat &vertexMap)
+int main(int argc,char **argv)
 {
-    if (depth.type() != CV_32FC1 || depth.empty())
-        return false;
-
-    int w = depth.cols;
-    int h = depth.rows;
-    vertexMap = cv::Mat::zeros(h, w, CV_32FC3);
-    float fx = K(0, 0);
-    float fy = K(1, 1);
-    float cx = K(0, 2);
-    float cy = K(1, 2);
-    float fxInv = 1.0f / fx;
-    float fyInv = 1.0f / fy;
-    float* ptrVert = (float*)vertexMap.data;
-
-    const float* ptrDepth = (const float*)depth.data;
-    for (int y = 0; y < h; ++y)
-    {
-        for (int x = 0; x < w; ++x)
-        {
-            float depthMeter = ptrDepth[y*w + x];
-            float x0 = (float(x) - cx) * fxInv;
-            float y0 = (float(y) - cy) * fyInv;
-
-            size_t off = (y*w + x) * 3;
-            ptrVert[off] = x0 * depthMeter;
-            ptrVert[off+1] = y0 * depthMeter;
-            ptrVert[off+2] = depthMeter;
-        }
-    }
-
-    return true;
-}
-
-
-Vec3f centroid(const cv::Mat &vertexMap)
-{
-    Vec3f centroid(0.0, 0.0, 0.0);
-
-    size_t cnt = 0;
-    for (int y = 0; y < vertexMap.rows; ++y)
-    {
-        for (int x = 0; x < vertexMap.cols; ++x)
-        {
-            cv::Vec3f pt = vertexMap.at<cv::Vec3f>(y, x);
-            if (pt.val[2] > 0.0)
-            {
-                Vec3f pt3(pt.val[0], pt.val[1], pt.val[2]);
-                centroid += pt3;
-                ++cnt;
-            }
-        }
-    }
-    centroid /= float(cnt);
-
-    return centroid;
-}
-
-
-int main(int argc, char *argv[])
-{
-    // default input sequence in folder
-    std::string dataFolder = std::string(STR(KILLINGFUSION_SOURCE_DIR)) + "/data/";
-
     // parse command line parameters
     const char *params = {
-        "{i|input| |input rgb-d sequence}"
-        "{f|frames|10000|number of frames to process (0=all)}"
-        "{n|iterations|100|max number of GD iterations}"
+        "{i|image| |input image}"
+        "{b|bw|false|load input image as grayscale/black-white}"
+        "{s|sigma|3.0|sigma}"
+        "{r|repeats|1|number of computation repetitions}"
+        "{c|cpu|false|compute on CPU}"
+        "{m|mem|0|memory: 0=global, 1=shared, 2=texture, 3=shared+constant}"
     };
     cv::CommandLineParser cmd(argc, argv, params);
 
-    // input sequence
-    // download from http://campar.in.tum.de/personal/slavcheva/deformable-dataset/index.html
-    std::string inputSequence = cmd.get<std::string>("input");
-    if (inputSequence.empty())
-    {
-        inputSequence = dataFolder;
-        //std::cerr << "No input sequence specified!" << std::endl;
-        //return 1;
-    }
-    std::cout << "input sequence: " << inputSequence << std::endl;
-    // number of frames to process
-    size_t frames = (size_t)cmd.get<int>("frames");
-    std::cout << "# frames: " << frames << std::endl;
-    // max number of GD iterations
-    size_t iterations = (size_t)cmd.get<int>("iterations");
-    std::cout << "iterations: " << iterations << std::endl;
+    // input image
+    std::string inputImage = cmd.get<std::string>("image");
+    // number of computation repetitions to get a better run time measurement
+    size_t repeats = (size_t)cmd.get<int>("repeats");
+    // load the input image as grayscale
+    bool gray = cmd.get<bool>("bw");
+    // compute on CPU
+    bool cpu = cmd.get<bool>("cpu");
+    std::cout << "mode: " << (cpu ? "CPU" : "GPU") << std::endl;
+    float sigma = cmd.get<float>("sigma");
+    std::cout << "sigma: " << sigma << std::endl;
+    size_t memory = (size_t)cmd.get<int>("mem");
+    if (memory == 1)
+        std::cout << "memory: shared" << std::endl;
+    else if (memory == 2)
+        std::cout << "memory: texture" << std::endl;
+	else if (memory == 3)
+        std::cout << "memory: shared+constant" << std::endl;
+    else
+        std::cout << "memory: global" << std::endl;
 
-    // initialize cuda context
-    cudaDeviceSynchronize(); CUDA_CHECK;
-
-    // load camera intrinsics
-    Eigen::Matrix3f K;
-    if (!loadIntrinsics(inputSequence + "/intrinsics_kinect1.txt", K))
+    // init camera
+    bool useCam = inputImage.empty();
+    cv::VideoCapture camera;
+    if (useCam && !openCamera(camera, 0))
     {
-        std::cerr << "No intrinsics file found!" << std::endl;
+        std::cerr << "ERROR: Could not open camera" << std::endl;
         return 1;
     }
-    std::cout << "K: " << std::endl << K << std::endl;
 
-    // create tsdf volume
-	size_t gridW = 256, gridH = 256, gridD = 256;
-	float alpha = 0.1, wk = 0.5, ws = 0.2;
-    Vec3i volDim(gridW, gridH, gridD);
-    Vec3f volSize(1.0f, 1.0f, 1.0f);
-    TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K);
-	TSDFVolume* tsdfLive = new TSDFVolume(volDim, volSize, K);
-	float* deformationU = new float[gridW*gridH*gridD];
-	float* deformationV = new float[gridW*gridH*gridD];
-	float* deformationW = new float[gridW*gridH*gridD];
-	std::memset(deformationU, 0, (gridW*gridH*gridD)*sizeof(float));
-	std::memset(deformationV, 0, (gridW*gridH*gridD)*sizeof(float));
-	std::memset(deformationW, 0, (gridW*gridH*gridD)*sizeof(float));
-	//Optimizer* optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gridW, gridH, gridD);
-
-    // create windows
-    cv::namedWindow("color");
-    cv::namedWindow("depth");
-    cv::namedWindow("mask");
-
-    // process frames
-    Mat4f poseVolume = Mat4f::Identity();
-    cv::Mat color, depth, mask;
-    for (size_t i = 0; i < frames; ++i)
+    // read input frame
+    cv::Mat mIn;
+    if (useCam)
     {
-        // load input frame
-        if (!loadFrame(inputSequence, i, color, depth, mask))
-        {
-            //std::cerr << "Frame " << i << " could not be loaded!" << std::endl;
-            //return 1;
-            break;
-        }
+        // read in first frame to get the dimensions
+        camera >> mIn;
+    }
+    else
+    {
+        // load the input image using opencv (load as grayscale if "gray==true", otherwise as is (may be color or grayscale))
+        mIn = cv::imread(inputImage.c_str(), (gray ? CV_LOAD_IMAGE_GRAYSCALE : -1));
+    }
+    // check
+    if (mIn.empty())
+    {
+        std::cerr << "ERROR: Could not retrieve frame " << inputImage << std::endl;
+        return 1;
+    }
+    // convert to float representation (opencv loads image values as single bytes by default)
+    mIn.convertTo(mIn, CV_32F);
 
-        // filter depth values outside of mask
-        filterDepth(mask, depth);
+    // init kernel
+    int kradius = ceil(3 * sigma);    // TODO (5.1) calculate kernel radius using sigma
+    std::cout << "kradius: " << kradius << std::endl;
+    int k_diameter = 2*kradius + 1;     // TODO (5.1) calculate kernel diameter from radius
+    int kn = k_diameter*k_diameter;
+    float *kernel = new float[kn];    // TODO (5.1) allocate array
+    // TODO (5.1) implement createConvolutionKernel() in convolution.cu
+    createConvolutionKernel(kernel, kradius, sigma);
 
-        // show input images
-        cv::imshow("color", color);
-        cv::imshow("depth", depth);
-        cv::imshow("mask", mask);
-        cv::waitKey();
+    cv::Mat mKernel(k_diameter,k_diameter,CV_32FC1);
+	cv::Mat mKernelResized(k_diameter,k_diameter,CV_32FC1);
+    {
+    	// TODO (5.2) fill mKernel for visualization
+		convertLayeredToMat(mKernelResized, kernel);
+		cv::normalize(mKernelResized, mKernelResized, 1.0, 0);
+		cv::resize(mKernelResized, mKernelResized, cv::Size(), 10, 10);
+    	showImage("Resized Kernel", mKernelResized, 100, 100);
+    }
 
+    // get image dimensions
+    int w = mIn.cols;         // width
+    int h = mIn.rows;         // height
+    int nc = mIn.channels();  // number of channels
+    std::cout << "Image: " << w << " x " << h << std::endl;
 
+    // initialize CUDA context
+    cudaDeviceSynchronize();  CUDA_CHECK;
 
+    // ### Set the output image format
+    cv::Mat mOut(h,w,mIn.type());  // grayscale or color depending on input image, nc layers
 
-		color /= 255.0f;
+    // ### Allocate arrays
+    // allocate raw input image array
+    float *imgIn = new float[h * w * nc];    // TODO allocate array
+    // allocate raw output array (the computation result will be stored in this array, then later converted to mOut for displaying)
+    float *imgOut = new float[h * w * nc];   // TODO allocate array
+
+    // allocate arrays on GPU
+    float *d_imgIn = NULL;
+    float *d_imgOut = NULL;
+    float *d_kernel = NULL;
+    // TODO alloc cuda memory for device arrays
+	cudaMalloc(&d_imgIn, (h * w * nc) * sizeof(float)); CUDA_CHECK;
+	cudaMalloc(&d_imgOut, (h * w * nc) * sizeof(float)); CUDA_CHECK;
+	cudaMalloc(&d_kernel, (h * w * nc) * sizeof(float)); CUDA_CHECK;
+
+    do
+    {
+		Timer timer;
+        timer.start();
+        // convert range of each channel to [0,1]
+        mIn /= 255.0f;
         // init raw input image array (and convert to layered)
-		int w = color.cols;         // width
-   		int h = color.rows;         // height
-    	int d = color.channels();  // number of channels
-		float* imgColor = new float[w*h*d];
-        convertMatToLayered (imgColor, color);
-		float* d_color = NULL;
+        convertMatToLayered (imgIn, mIn);
+
+		float* imgColor = new float[w*h*nc];
+        convertMatToLayered (imgColor, mIn);
+		float* d_imgIn = NULL;
 		float* d_kernelDx = NULL;
 		float* d_kernelDy = NULL;
 		float* d_gradX = NULL;
 		float* d_gradY = NULL;
-		float* gradX = new float[w*h];
-		float* gradY = new float[w*h];
-		cv::Mat mColor_grad_X(h,w,color.type());
-		cv::Mat mColor_grad_Y(h,w,color.type());
-		cudaMalloc(&d_color, (w*h*d) * sizeof(float)); CUDA_CHECK;
-		cudaMalloc(&d_gradX, (w*h) * sizeof(float)); CUDA_CHECK;
-		cudaMalloc(&d_gradY, (w*h) * sizeof(float)); CUDA_CHECK;
+		float* gradX = new float[w*h*nc];
+		float* gradY = new float[w*h*nc];
+		cv::Mat mColor_grad_X(h,w,mIn.type());
+		cv::Mat mColor_grad_Y(h,w,mIn.type());
+		cudaMalloc(&d_imgIn, (w*h*nc) * sizeof(float)); CUDA_CHECK;
+		cudaMalloc(&d_gradX, (w*h*nc) * sizeof(float)); CUDA_CHECK;
+		cudaMalloc(&d_gradY, (w*h*nc) * sizeof(float)); CUDA_CHECK;
 		cudaMalloc(&d_kernelDx, (27) * sizeof(float)); CUDA_CHECK;
 		cudaMalloc(&d_kernelDy, (27) * sizeof(float)); CUDA_CHECK;
 
-		cudaMemcpy(d_color, imgColor, (w*h*d) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
+		cudaMemcpy(d_imgIn, imgColor, (w*h*nc) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 		cudaMemcpy(d_kernelDx, kernelDxCentralDiff, (27) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 		cudaMemcpy(d_kernelDy, kernelDyCentralDiff, (27) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-		computeConvolution3D(d_gradX, d_color, d_kernelDx, 1, w, h, 1);
-    	computeConvolution3D(d_gradY, d_color, d_kernelDy, 1, w, h, 1);
-		cudaMemcpy(gradX, d_gradX, (w*h) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-		cudaMemcpy(gradY, d_gradY, (w*h) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+		computeConvolution3D(d_gradX, d_imgIn, d_kernelDx, 1, w, h, nc);
+    	computeConvolution3D(d_gradY, d_imgIn, d_kernelDy, 1, w, h, nc);
+		cudaMemcpy(gradX, d_gradX, (w*h*nc) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+		cudaMemcpy(gradY, d_gradY, (w*h*nc) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 		convertLayeredToMat(mColor_grad_X, gradX);
 		convertLayeredToMat(mColor_grad_Y, gradY);
-		showImage("Grad X", mColor_grad_X, 100+w+40, 100);
-		showImage("Grad Y", mColor_grad_Y, 100+w+40, 100);
-		cv::waitKey();
 
+		showImage("Grad X", mColor_grad_X*10, 100+w+40, 100);
+		showImage("Grad Y", mColor_grad_Y*10, 100+w+40, 100);
+		timer.end();
+		float t = timer.get()/repeats;
+		std::cout << "time: " << t*1000 << " ms" << std::endl;
 
+        // proceed similarly for other output images, e.g. the convolution kernel:
+        if (!mKernel.empty())
+			convertLayeredToMat(mKernel, kernel);
+            showImage("Kernel", mKernel, 100, 50);
 
-
-
-        // get initial volume pose from centroid of first depth map
-        /*if (i == 0)
+        if (useCam)
         {
-            // initial pose for volume by computing centroid of first depth/vertex map
-            cv::Mat vertMap;
-            depthToVertexMap(K, depth, vertMap);
-            Vec3f transCentroid = centroid(vertMap);
-            poseVolume.topRightCorner<3,1>() = transCentroid;
-            std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
-			tsdfGlobal->integrate(poseVolume, color, depth);
+            // wait 30ms for key input
+            if (cv::waitKey(30) >= 0)
+            {
+                mIn.release();
+            }
+            else
+            {
+                // retrieve next frame from camera
+                camera >> mIn;
+                // convert to float representation (opencv loads image values as single bytes by default)
+                mIn.convertTo(mIn, CV_32F);
+            }
         }
-		else
-		{
-            // initial pose for volume by computing centroid of first depth/vertex map
-            cv::Mat vertMap;
-            depthToVertexMap(K, depth, vertMap);
-            Vec3f transCentroid = centroid(vertMap);
-            poseVolume.topRightCorner<3,1>() = transCentroid;
-            std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
-			// integrate frame into tsdf volume
-        	tsdfLive->integrate(poseVolume, color, depth);
-
-			// TODO: perform optimization
-			optimizer->optimize(deformationU, deformationV, deformationW, tsdfLive);
-			// TODO: update global model
-			
-		}*/
-        // integrate frame into tsdf volume
-        
     }
+    while (useCam && !mIn.empty());
 
-    // extract mesh using marching cubes
-    std::cout << "Extracting mesh..." << std::endl;
-    MarchingCubes mc(volDim, volSize);
-    mc.computeIsoSurface(tsdfGlobal->ptrTsdf(), tsdfGlobal->ptrTsdfWeights(), tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
-
-    // save mesh
-    std::cout << "Saving mesh..." << std::endl;
-    const std::string meshFilename = inputSequence + "/mesh.ply";
-    if (!mc.savePly(meshFilename))
+    if (!useCam)
     {
-        std::cerr << "Could not save mesh!" << std::endl;
+        cv::waitKey(0);
+
+        // save input and result
+        cv::imwrite("image_input.png",mIn*255.f);  // "imwrite" assumes channel range [0,255]
+        cv::imwrite("image_result.png",mOut*255.f);
+		cv::imwrite("image_kernel_resized.png",mKernelResized*255.f);
+        cv::imwrite("image_kernel.png",mKernel*255.f);
     }
 
-    // clean up
-    delete tsdfGlobal;
-	delete tsdfLive;
-	//delete optimizer;
+    // ### Free allocated arrays
+    // TODO free cuda memory of all device arrays
+	cudaFree(d_imgIn); CUDA_CHECK;
+	cudaFree(d_imgOut); CUDA_CHECK;
+	cudaFree(d_kernel); CUDA_CHECK;
+    // TODO free memory of all host arrays
+	delete[] imgOut;
+    delete[] imgIn;
+	delete[] kernel;
+    // close all opencv windows
     cv::destroyAllWindows();
 
     return 0;
 }
+
+
+
+
+		
