@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
         	tsdfLive->integrate(poseVolume, color, depth);
 
 			// TODO: perform optimization
-			optimizer->optimize(deformationU, deformationV, deformationW, tsdfLive);
+			//optimizer->optimize(deformationU, deformationV, deformationW, tsdfLive);
 			// TODO: update global model
 			
 		}
