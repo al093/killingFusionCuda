@@ -106,9 +106,9 @@ CUDA_ADD_EXECUTABLE(${TEST_NAME}
         src/tsdf_volume.h src/tsdf_volume.cpp
         src/dataset.h src/dataset.cpp
         src/helper.cuh src/helper.cu
-		src/convolution.cuh src/convolution.cu
-		src/divergence.cuh src/divergence.cu
-		src/optimizer.cuh src/optimizer.cu
+	src/convolution.cuh src/convolution.cu
+	src/divergence.cuh src/divergence.cu
+	src/optimizer.cuh src/optimizer.cu
         src/mat.h
         src/testFunctions.cu
 )

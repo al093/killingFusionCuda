@@ -29,11 +29,13 @@ public:
 protected:
 	void allocateMemoryInDevice();
 	void copyArraysToDevice();
-	void computeGradient(float* gradOutX, float* gradOutY, float* gradOutZ, const float* tsdfLive, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
-	void computeDivergence(float* divOut, const float* deformationInU, const float* deformationInV, const float* deformationInW, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
+	void computeGradient(float* gradOutX, float* gradOutY, float* gradOutZ, const float* gridIn, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
+	void computeDivergence(float* divOut, const float* gridInU, const float* gridInV, const float* gridInW, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
+	void computeLapacian(float* lapOut, const float* deformationIn, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d);
 	void getSlice(float* sliceOut, const float* gridIn, size_t sliceInd);
 
     TSDFVolume* m_tsdfGlobal;
+    float* m_d_tsdfLive = NULL;
     float* m_deformationFieldU, * m_deformationFieldV, * m_deformationFieldW;
 	float* m_d_deformationFieldU, * m_d_deformationFieldV, * m_d_deformationFieldW;
     float m_alpha;
@@ -50,9 +52,19 @@ protected:
 	float* m_d_sdfDz = NULL;
 
 	// Gradients of deformation field
-	float* m_d_dx = NULL;
-	float* m_d_dy = NULL;
-	float* m_d_dz = NULL;
+	float* m_d_dux = NULL;
+	float* m_d_duy = NULL;
+	float* m_d_duz = NULL;
+	/*float* m_d_dvx = NULL;
+	float* m_d_dvy = NULL;
+	float* m_d_dvz = NULL;
+	float* m_d_dwx = NULL;
+	float* m_d_dwy = NULL;
+	float* m_d_dwz = NULL;*/
+	float* m_d_du = NULL;
+	float* m_d_dv = NULL;
+	float* m_d_dw = NULL;
 	float* m_d_div = NULL;
+	float* m_d_lapu = NULL;
 };
 
