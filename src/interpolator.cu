@@ -61,7 +61,7 @@ void Interpolator::uploadToTextureMemory(float* h_phi, int w, int h, int d)
     cudaMemcpy3DParms copyParams = {0};
     copyParams.srcPtr = make_cudaPitchedPtr((void*)h_phi, extent.width*sizeof(float), extent.width, extent.height);
     copyParams.dstArray = cuArray_phi1;
-    copyParams.kind = cudaMemcpyHostToDevice;
+    copyParams.kind = cudaMemcpyDeviceToDevice;
     copyParams.extent = extent;
     cudaMemcpy3D(&copyParams);
     CUDA_CHECK;
@@ -89,7 +89,7 @@ void Interpolator::uploadToTextureMemory(float* h_phi, int w, int h, int d)
     texDescr.addressMode[1] = cudaAddressModeClamp;
     texDescr.addressMode[2] = cudaAddressModeClamp;
     texDescr.readMode = cudaReadModeElementType;
-    cudaCreateTextureObject(&texNoise, &texRes, &texDescr, NULL);
+    cudaCreateTextureObject(&texPhil, &texRes, &texDescr, NULL);
     CUDA_CHECK;
 
 //-----------------------------------------------------------------------------------------

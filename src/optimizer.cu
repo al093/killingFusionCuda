@@ -171,7 +171,7 @@ void Optimizer::test(TSDFVolume* tsdfLive)
 	// Interpolate
 	float* d_tsdfDef = NULL;
 	cudaMalloc(&d_tsdfDef, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
-	Interpolator *interptsdf = new Interpolator(tsdfLiveGrid, m_gridW, m_gridH, m_gridD);
+	Interpolator *interptsdf = new Interpolator(m_d_tsdfLive, m_gridW, m_gridH, m_gridD);
 	interptsdf->interpolate3D(d_tsdfDef, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 
 
@@ -232,32 +232,6 @@ void Optimizer::test(TSDFVolume* tsdfLive)
 	
 	do
 	{
-		/* Test convolution
-		{
-			m_deformationFieldU = new float[27];
-			for (int i = 0; i < 27; i++)
-			{
-				m_deformationFieldU[i] = 0.0;
-			}
-			m_deformationFieldU[4] = 1.0;
-			m_deformationFieldV = new float[27];
-			for (int i = 0; i < 27; i++)
-			{
-				m_deformationFieldV[i] = 0.0;
-			}
-			m_deformationFieldV[7] = 1.0;
-			m_deformationFieldW = new float[27];
-			for (int i = 0; i < 27; i++)
-			{
-				m_deformationFieldW[i] = 0.0;
-			}
-			m_deformationFieldW[22] = 1.0;
-		}
-
-		cudaMemcpy(m_d_deformationFieldU, m_deformationFieldU, (3 * 3 * 3) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-		cudaMemcpy(m_d_deformationFieldV, m_deformationFieldV, (3 * 3 * 3) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-		cudaMemcpy(m_d_deformationFieldW, m_deformationFieldW, (3 * 3 * 3) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-		*/
 		// Copy necessary arrays from host to device
 		cudaMemcpy(m_d_deformationFieldU, m_deformationFieldU, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 		cudaMemcpy(m_d_deformationFieldV, m_deformationFieldV, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;

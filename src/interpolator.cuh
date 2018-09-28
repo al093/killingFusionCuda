@@ -40,7 +40,7 @@ class Interpolator
 		~Interpolator();
 		
 		//cudaTextureObject_t tex=0;
-		cudaTextureObject_t texNoise;
+		cudaTextureObject_t texPhil;
 		cudaArray *cuArray_phi1;
 		void interpolate3D(float *d_phiInterpolated, const float *d_u, const float *d_v, const float *d_w, int width, int height, int depth);
 

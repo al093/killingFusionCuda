@@ -139,8 +139,8 @@ int main(int argc, char *argv[])
 	float* deformationW = new float[gridW*gridH*gridD];
     for (size_t i = 0; i < gridW*gridH*gridD; i++)
     {
-        deformationU[i] = 0.0f;
-        deformationV[i] = 0.0f; 
+        deformationU[i] = 20.7f;
+        deformationV[i] = -15.2f; 
         deformationW[i] = 0.0f;   
     }
 	Optimizer* optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gridW, gridH, gridD);

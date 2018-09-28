@@ -78,8 +78,8 @@ void freeTextureMemory()
 
 void test3dInterpolation(float *d_phiInterpolated, const float *d_u, const float *d_v, const float *d_w, int width, int height, int depth)
 {
-    dim3 blockSize(width/10, height/10, depth/10);
-    dim3 gridSize(10,10,10);
+    dim3 blockSize(32, 8, 1);
+    dim3 grid = computeGrid3D(blockSize, width, height, depth);
 
-    test3dInterpolationKernel <<<gridSize, blockSize>>> (d_phiInterpolated, d_u, d_v, d_w, width, height, depth);
+    test3dInterpolationKernel <<<grid, blockSize>>> (d_phiInterpolated, d_u, d_v, d_w, width, height, depth);
 }

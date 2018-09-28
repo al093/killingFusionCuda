@@ -13,7 +13,7 @@
 #include <string>
 #include <stdlib.h>
 
-#include "gamma.cuh"
+//#include "gamma.cuh"
 #include "helper.cuh"
 
 #include "energyDerivatives.cuh"
