@@ -95,6 +95,7 @@ CUDA_ADD_EXECUTABLE(${APP_NAME}
         src/divergence.cuh src/divergence.cu
         src/optimizer.cuh src/optimizer.cu
         src/energyDerivatives.cuh src/energyDerivatives.cu
+	src/interpolator.cuh src/interpolator.cu
         src/mat.h
         src/main.cu
 )
@@ -111,6 +112,7 @@ CUDA_ADD_EXECUTABLE(${TEST_NAME}
         src/divergence.cuh src/divergence.cu
         src/optimizer.cuh src/optimizer.cu
         src/energyDerivatives.cuh src/energyDerivatives.cu
+	src/interpolator.cuh src/interpolator.cu
         src/mat.h
         src/testFunctions.cu
 )
@@ -127,6 +129,7 @@ CUDA_ADD_EXECUTABLE(${TEST_INTERP_NAME}
         src/divergence.cuh src/divergence.cu
         src/optimizer.cuh src/optimizer.cu
         src/energyDerivatives.cuh src/energyDerivatives.cu
+	src/interpolator.cuh src/interpolator.cu
         src/mat.h
         src/testInterpolation.cu
 )

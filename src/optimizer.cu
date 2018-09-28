@@ -8,7 +8,8 @@
 #include "convolution.cuh"
 #include "divergence.cuh"
 #include "helper.cuh"
-#include "energyDerivatives.cuh"
+//#include "energyDerivatives.cuh"
+#include "interpolator.cuh"
 #include <opencv2/highgui/highgui.hpp>
 
 Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha, const float wk, const float ws, const size_t gridW, const size_t gridH, const size_t gridD) :
@@ -196,10 +197,14 @@ void Optimizer::test(TSDFVolume* tsdfLive)
 	// Interpolate
 	float* d_tsdfDef = NULL;
 	cudaMalloc(&d_tsdfDef, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
-	uploadToTextureMemory(tsdfLiveGrid, m_gridW, m_gridH, m_gridD);
-	test3dInterpolation(d_tsdfDef, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+	Interpolator *interptsdf = new Interpolator(tsdfLiveGrid, m_gridW, m_gridH, m_gridD);
+	interptsdf->interpolate3D(d_tsdfDef, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+
+
+	//uploadToTextureMemory(tsdfLiveGrid, m_gridW, m_gridH, m_gridD);
+	//test3dInterpolation(d_tsdfDef, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 	cudaDeviceSynchronize();
-	freeTextureMemory();
+	//freeTextureMemory();
 	cudaMemcpy(tsdfLiveGridDef, d_tsdfDef, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 
 	float* sliceTSDF = new float[m_gridW*m_gridH];
