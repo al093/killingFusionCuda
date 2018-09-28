@@ -116,3 +116,19 @@ CUDA_ADD_EXECUTABLE(${TEST_NAME}
 )
 TARGET_LINK_LIBRARIES(${TEST_NAME} ${OpenCV_LIBS})
 TARGET_COMPILE_OPTIONS(${TEST_NAME} PRIVATE -std=c++11)
+
+SET(TEST_INTERP_NAME "testInterpolation")
+CUDA_ADD_EXECUTABLE(${TEST_INTERP_NAME}
+        src/marching_cubes.h src/marching_cubes.cpp
+        src/tsdf_volume.h src/tsdf_volume.cpp
+        src/dataset.h src/dataset.cpp
+        src/helper.cuh src/helper.cu
+        src/convolution.cuh src/convolution.cu
+        src/divergence.cuh src/divergence.cu
+        src/optimizer.cuh src/optimizer.cu
+        src/energyDerivatives.cuh src/energyDerivatives.cu
+        src/mat.h
+        src/testInterpolation.cu
+)
+TARGET_LINK_LIBRARIES(${TEST_INTERP_NAME} ${OpenCV_LIBS})
+TARGET_COMPILE_OPTIONS(${TEST_INTERP_NAME} PRIVATE -std=c++11)
