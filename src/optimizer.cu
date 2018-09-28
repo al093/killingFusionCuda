@@ -8,7 +8,7 @@
 #include "convolution.cuh"
 #include "divergence.cuh"
 #include "helper.cuh"
-//#include "energyDerivatives.cuh"
+#include "energyDerivatives.cuh"
 #include "interpolator.cuh"
 #include <opencv2/highgui/highgui.hpp>
 
@@ -33,14 +33,17 @@ void Optimizer::allocateMemoryInDevice()
 	// Allocate current TSDF
 	cudaMalloc(&m_d_tsdfGlobal, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_tsdfLive, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
 	// Allocate deformation field
 	cudaMalloc(&m_d_deformationFieldU, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_deformationFieldV, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_deformationFieldW, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
 	// Allocate kernels
 	cudaMalloc(&m_d_kernelDx, (27) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_kernelDy, (27) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_kernelDz, (27) * sizeof(float)); CUDA_CHECK;
+
 	// Allocate SDF live gradients
 	cudaMalloc(&m_d_sdfDx, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_sdfDy, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -53,6 +56,7 @@ void Optimizer::allocateMemoryInDevice()
 	cudaMalloc(&m_d_du, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_dv, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_dw, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
 	// Allocate hessian
 	cudaMalloc(&m_d_hessXX, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_hessXY, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -60,10 +64,13 @@ void Optimizer::allocateMemoryInDevice()
 	cudaMalloc(&m_d_hessYY, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_hessYZ, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_hessZZ, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
 	// Allocate divergence
 	cudaMalloc(&m_d_div, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
 	// Allocate laplacian
 	cudaMalloc(&m_d_lapu, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
 	// Allocate interpolated grids
 	cudaMalloc(&m_d_tsdfLiveDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_sdfDxDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -75,9 +82,16 @@ void Optimizer::allocateMemoryInDevice()
 	cudaMalloc(&m_d_hessYYDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_hessYZDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_hessZZDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
-}
 
-void Optimizer::copyArraysToDevice()
+    //Allocate and initialize to zero the memory for the gradients of energy
+    cudaMalloc(&m_d_energyDu, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMalloc(&m_d_energyDv, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMalloc(&m_d_energyDw, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMemset(m_d_energyDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMemset(m_d_energyDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMemset(m_d_energyDw, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+}
+    void Optimizer::copyArraysToDevice()
 {
 	// TSDF Global (not working by now)
 	cudaMemcpy(m_d_tsdfGlobal, m_tsdfGlobal->ptrTsdf(), (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
@@ -136,6 +150,8 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 										GRADIENT OF PHIn IS: m_d_sdfDx, m_d_sdfDy, m_d_sdfDz
 										HESSIAN OF PHIn IS: m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ
 	*/
+    
+    
 	do
 	{
 		// TODO: compute laplacians of the deformation field
@@ -144,11 +160,26 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
 		// TODO: interpolate TSDF Live Frame (EXAMPLE: HOW TO INTERPOLATE PHIn DEFORMED BY PSI)
 		interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-		// TODO: interpolate on gradient of tsdfLive
 		
+        //interpolated the gradient of Phi_n wrt the psi
+        interpTSDFDx->interpolate3D(m_d_sdfDxDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        interpTSDFDy->interpolate3D(m_d_sdfDyDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+		interpTSDFDz->interpolate3D(m_d_sdfDzDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        
+        //following function adds to the m_d_energyDu/v/w, so ensure that they were zero intially
+        cudaMemset(m_d_energyDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        cudaMemset(m_d_energyDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        cudaMemset(m_d_energyDw, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
+        //compute dEdata term
+        computeDataTermDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
+                                  m_d_tsdfLiveDeform, m_d_tsdfGlobal,
+                                  m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
+                                  m_gridW, m_gridH, m_gridD);
+
 		// TODO: interpolate on hessian of tsdfLive
 
-		// TODO: compute dEdata term
+
 
 		// TODO: compute dEkilling term
 

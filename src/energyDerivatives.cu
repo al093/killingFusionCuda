@@ -1,85 +1,89 @@
-///Cuda Functions to calculate the energy derivatives and also helper function for using 3D texture memory.
+// ########################################################################
+// Practical Course: GPU Programming in Computer Vision
+// Technical University of Munich, Computer Vision Group
+// ########################################################################
 #include "energyDerivatives.cuh"
+
 #include <iostream>
 #include <cuda_runtime.h>
-
-#include <math.h>
 #include "helper.cuh"
 
-
-//create multiple global Texture objects here
-texture<float, cudaTextureType3D, cudaReadModeElementType> phi;
-cudaArray *cuArray_phi;
-
 __global__
-void test3dInterpolationKernel(float *d_outputValues, const float *d_u, const float *d_v, const float *d_w, int width, int height, int depth)
+void computeDataTermDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW, 
+                                    const float *d_phiNDeformed, const float *d_phiGlobal,
+                                    const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
+                                    const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
     int y = threadIdx.y + blockIdx.y*blockDim.y;
     int z = threadIdx.z + blockIdx.z*blockDim.z;
 
-    float fx = x;
-    float fy = y;
-    float fz = z;
+    if(x<width && y<height && z<depth)
+    {
+        size_t idx = x + y*width + z*width*height;
+
+        float scalar = (d_phiNDeformed[idx] - d_phiGlobal[idx]);
+
+        d_dEdataU[idx] += scalar*d_gradPhiNDeformedX[idx];
+        d_dEdataV[idx] += scalar*d_gradPhiNDeformedY[idx];
+        d_dEdataW[idx] += scalar*d_gradPhiNDeformedZ[idx];
+    }
+}
+
+__global__
+void computeDataTermDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW, 
+                               const float *d_hessPhiXX, const float *d_hessPhiXY, const float *d_hessPhiXZ,
+                               const float *d_hessPhiYY, const float *d_hessPhiYZ, const float *d_hessPhiZZ,
+                               const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
+                               const size_t width, const size_t height, const size_t depth)
+{
+    int x = threadIdx.x + blockIdx.x*blockDim.x;
+    int y = threadIdx.y + blockIdx.y*blockDim.y;
+    int z = threadIdx.z + blockIdx.z*blockDim.z;
 
     if(x<width && y<height && z<depth)
     {
         size_t idx = x + y*width + z*width*height;
-        //Remember!! to always add 0.5, the voxels have actual values at their centers, and the size of a voxel is 1x1x1, so need to add .5, .5, .5 for center 
-        d_outputValues[idx] = tex3D(phi, fx + d_u[idx] + 0.5, fy + d_v[idx] + 0.5, fz + d_w[idx] + 0.5);
+
+        float gradNorm = pow(d_gradPhiNDeformedX[idx], 2) + pow(d_gradPhiNDeformedY[idx], 2) + pow(d_gradPhiNDeformedZ[idx], 2);
+        gradNorm = sqrt(gradNorm);
+        
+        float scalar = (gradNorm - 1.0)/(gradNorm+0.00001);
+        
+        d_dEdataU[idx] += scalar*(d_hessPhiXX[idx]*d_gradPhiNDeformedX[idx] + d_hessPhiXY[idx]*d_gradPhiNDeformedY[idx] + d_hessPhiXZ[idx]*d_gradPhiNDeformedZ[idx]);
+        d_dEdataV[idx] += scalar*(d_hessPhiXY[idx]*d_gradPhiNDeformedX[idx] + d_hessPhiYY[idx]*d_gradPhiNDeformedY[idx] + d_hessPhiYZ[idx]*d_gradPhiNDeformedZ[idx]);
+        d_dEdataW[idx] += scalar*(d_hessPhiXZ[idx]*d_gradPhiNDeformedX[idx] + d_hessPhiYZ[idx]*d_gradPhiNDeformedY[idx] + d_hessPhiZZ[idx]*d_gradPhiNDeformedZ[idx]);
     }
 }
 
 
-///use this method to bind Texture memory to Cuda array.
-///TODO currently testing for only one 3D voxel grid
-void uploadToTextureMemory(float* h_phi, int w, int h, int d)
-{
-    //define channel format descriptor
-    cudaChannelFormatDesc desc = cudaCreateChannelDesc<float>();
-
-    //set the grid size
-    cudaExtent extent;
-    extent.width = w;
-    extent.height = h;
-    extent.depth = d;
-
-    //define and allocate 3D cuda array
-    cudaMalloc3DArray(&cuArray_phi, &desc, extent);
-    CUDA_CHECK;
-
-    //copy from host memory to CudaArray in device memory
-    cudaMemcpy3DParms copyParams = {0};
-    copyParams.srcPtr = make_cudaPitchedPtr((void*)h_phi, extent.width*sizeof(float), extent.width, extent.height);
-    copyParams.dstArray = cuArray_phi;
-    copyParams.kind = cudaMemcpyHostToDevice;
-    copyParams.extent = extent;
-    cudaMemcpy3D(&copyParams);
-    CUDA_CHECK;
-
-    //set texture parameters
-    phi.normalized = false;                      // access with normalized phiture coordinates
-    phi.filterMode = cudaFilterModeLinear;      // linear interpolation
-    phi.addressMode[0] = cudaAddressModeClamp;   // wrap phiture coordinates
-    phi.addressMode[1] = cudaAddressModeClamp;
-    phi.addressMode[2] = cudaAddressModeClamp;
-
-    // bind array to 3D texture
-    cudaBindTextureToArray(phi, cuArray_phi, desc);
-    CUDA_CHECK;
-}
-
-void freeTextureMemory()
-{
-    cudaUnbindTexture(phi);
-    cudaFreeArray(cuArray_phi);
-}
-
-
-void test3dInterpolation(float *d_phiInterpolated, const float *d_u, const float *d_v, const float *d_w, int width, int height, int depth)
+void computeDataTermDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW, 
+                               const float *d_phiNDeformed, const float *d_phiGlobal,
+                               const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
+                               const size_t width, const size_t height, const size_t depth)
 {
     dim3 blockSize(32, 8, 1);
     dim3 grid = computeGrid3D(blockSize, width, height, depth);
 
-    test3dInterpolationKernel <<<grid, blockSize>>> (d_phiInterpolated, d_u, d_v, d_w, width, height, depth);
+    computeDataTermDerivativeKernel <<<grid, blockSize>>> (d_dEdataU, d_dEdataV, d_dEdataW, 
+                                                     d_phiNDeformed, d_phiGlobal,
+                                                     d_gradPhiNDeformedX, d_gradPhiNDeformedY, d_gradPhiNDeformedZ,
+                                                     width, height, depth);
+}
+
+
+void computeLevelSetDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW, 
+                               const float *d_hessPhiXX, const float *d_hessPhiXY, const float *d_hessPhiXZ,
+                               const float *d_hessPhiYY, const float *d_hessPhiYZ, const float *d_hessPhiZZ,
+                               const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
+                               const size_t width, const size_t height, const size_t depth)
+{
+    dim3 blockSize(32, 8, 1);
+    dim3 grid = computeGrid3D(blockSize, width, height, depth);
+    
+    computeDataTermDerivativeKernel <<<grid, blockSize>>> (d_dEdataU, d_dEdataV, d_dEdataW, 
+                                                           d_hessPhiXX, d_hessPhiXY, d_hessPhiXZ,
+                                                           d_hessPhiYY, d_hessPhiYZ, d_hessPhiZZ,
+                                                           d_gradPhiNDeformedX, d_gradPhiNDeformedY, d_gradPhiNDeformedZ,
+                                                           width, height, depth);
 }

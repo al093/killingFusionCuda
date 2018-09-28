@@ -76,6 +76,7 @@ protected:
 	float* m_d_dw = NULL;
 	float* m_d_div = NULL;
 	float* m_d_lapu = NULL;
+    
 	// Interpolated grids
 	float* m_d_tsdfLiveDeform = NULL;
 	float* m_d_sdfDxDeform = NULL;
@@ -87,5 +88,9 @@ protected:
 	float* m_d_hessYYDeform = NULL;
 	float* m_d_hessYZDeform = NULL;
 	float* m_d_hessZZDeform = NULL;
+    
+    float* m_d_energyDu = NULL;
+    float* m_d_energyDv = NULL;
+    float* m_d_energyDw = NULL;
 };
 
