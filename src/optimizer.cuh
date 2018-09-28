@@ -36,7 +36,7 @@ protected:
 	void getSlice(float* sliceOut, const float* gridIn, size_t sliceInd);
 
     TSDFVolume* m_tsdfGlobal;
-    float* m_d_tsdfLive = NULL;
+    float* m_d_tsdfGlobal = NULL, * m_d_tsdfLive = NULL;
     float* m_deformationFieldU, * m_deformationFieldV, * m_deformationFieldW;
 	float* m_d_deformationFieldU, * m_d_deformationFieldV, * m_d_deformationFieldW;
     float m_alpha;
@@ -76,5 +76,16 @@ protected:
 	float* m_d_dw = NULL;
 	float* m_d_div = NULL;
 	float* m_d_lapu = NULL;
+	// Interpolated grids
+	float* m_d_tsdfLiveDeform = NULL;
+	float* m_d_sdfDxDeform = NULL;
+	float* m_d_sdfDyDeform = NULL;
+	float* m_d_sdfDzDeform = NULL;
+	float* m_d_hessXXDeform = NULL;
+	float* m_d_hessXYDeform = NULL;
+	float* m_d_hessXZDeform = NULL;
+	float* m_d_hessYYDeform = NULL;
+	float* m_d_hessYZDeform = NULL;
+	float* m_d_hessZZDeform = NULL;
 };
 

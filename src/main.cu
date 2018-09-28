@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
         	tsdfLive->integrate(poseVolume, color, depth);
 
 			// TODO: perform optimization
-			optimizer->test(tsdfLive);
+			optimizer->optimize(tsdfLive);
 			// TODO: update global model
 			
 		}

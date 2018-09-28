@@ -142,5 +142,5 @@ void Interpolator::interpolate3D(float *d_phiInterpolated, const float *d_u, con
     dim3 blockSize(32, 8, 1);
     dim3 grid = computeGrid3D(blockSize, width, height, depth);
 
-    interpolate3DKernel <<<grid, blockSize>>> (d_phiInterpolated, texNoise, d_u, d_v, d_w, width, height, depth);
+    interpolate3DKernel <<<grid, blockSize>>> (d_phiInterpolated, texPhil, d_u, d_v, d_w, width, height, depth);
 }
