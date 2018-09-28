@@ -23,8 +23,8 @@ public:
     Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha, const float wk, const float ws, const size_t gridW, const size_t gridH, const size_t gridD);
     ~Optimizer();
 
-	void optimize(float* optimDeformationU, float* optimDeformationV, float* optimDeformationW, TSDFVolume* tsdfLive);
-	void test(float* optimDeformationU, float* optimDeformationV, float* optimDeformationW, TSDFVolume* tsdfLive);
+	void optimize(TSDFVolume* tsdfLive);
+	void test(TSDFVolume* tsdfLive);
 
 protected:
 	void allocateMemoryInDevice();

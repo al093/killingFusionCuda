@@ -8,6 +8,7 @@
 #include "convolution.cuh"
 #include "divergence.cuh"
 #include "helper.cuh"
+#include "energyDerivatives.cuh"
 #include <opencv2/highgui/highgui.hpp>
 
 Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha, const float wk, const float ws, const size_t gridW, const size_t gridH, const size_t gridD) :
@@ -42,6 +43,7 @@ void Optimizer::allocateMemoryInDevice()
 	cudaMalloc(&m_d_sdfDx, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_sdfDy, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_sdfDz, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
 	// Allocate deformation field gradients
 	cudaMalloc(&m_d_dux, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_duy, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -78,6 +80,10 @@ void Optimizer::copyArraysToDevice()
 	cudaMemcpy(m_d_kernelDx, m_kernelDxCentralDiff, (27) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 	cudaMemcpy(m_d_kernelDy, m_kernelDyCentralDiff, (27) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 	cudaMemcpy(m_d_kernelDz, m_kernelDzCentralDiff, (27) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
+	//Deformation
+	cudaMemcpy(m_d_deformationFieldU, m_deformationFieldU, (m_gridW * m_gridH * m_gridD)  * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
+	cudaMemcpy(m_d_deformationFieldV, m_deformationFieldV, (m_gridW * m_gridH * m_gridD)  * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
+	cudaMemcpy(m_d_deformationFieldW, m_deformationFieldW, (m_gridW * m_gridH * m_gridD)  * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 }
 
 Optimizer::~Optimizer()
@@ -94,7 +100,7 @@ Optimizer::~Optimizer()
 	cudaFree(m_d_div); CUDA_CHECK;
 }
 
-void Optimizer::optimize(float* optimDeformationU, float* optimDeformationV, float* optimDeformationW, TSDFVolume* tsdfLive)
+void Optimizer::optimize(TSDFVolume* tsdfLive)
 {
 	// Initialize variables
 	float currentMaxVectorUpdate = 0.01;
@@ -159,7 +165,7 @@ void Optimizer::optimize(float* optimDeformationU, float* optimDeformationV, flo
 	} while (currentMaxVectorUpdate > MAX_VECTOR_UPDATE_THRESHOLD);
 }
 
-void Optimizer::test(float* optimDeformationU, float* optimDeformationV, float* optimDeformationW, TSDFVolume* tsdfLive)
+void Optimizer::test(TSDFVolume* tsdfLive)
 {
 	// Initialize variables
 	float currentMaxVectorUpdate = 0.01;
@@ -167,26 +173,46 @@ void Optimizer::test(float* optimDeformationU, float* optimDeformationV, float* 
 	/*for (int i=0; i< m_gridW*m_gridH*m_gridD; i++)
     	tsdfLiveGrid[i]= (float) tsdfLive->ptrColorR()[m_gridW*m_gridH*m_gridD];*/
 
+	for (int i = 0; i < 20; i++)
+	{
+		std::cout << m_deformationFieldU[i] << std::endl;
+	}
+	
+	
+
+
 	// TODO: compute gradient of tsdfLive
 	cudaMemcpy(m_d_tsdfLive, tsdfLiveGrid, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 	computeGradient(m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_tsdfLive, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
 	computeLapacian(m_d_lapu, m_d_tsdfLive, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
 	computeHessian(m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ, m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
+	float* tsdfLiveGridDef = new float[m_gridW * m_gridH * m_gridD];
 	float* gradX = new float[m_gridW * m_gridH * m_gridD];
 	float* lapU = new float[m_gridW * m_gridH * m_gridD];
 	float* hessXX = new float[m_gridW * m_gridH * m_gridD];
 	cudaMemcpy(gradX, m_d_sdfDx, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 	cudaMemcpy(lapU, m_d_lapu, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-	cudaMemcpy(hessXX, m_d_hessXX, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;	
+	cudaMemcpy(hessXX, m_d_hessXX, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+	// Interpolate
+	float* d_tsdfDef = NULL;
+	cudaMalloc(&d_tsdfDef, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+	uploadToTextureMemory(tsdfLiveGrid, m_gridW, m_gridH, m_gridD);
+	test3dInterpolation(d_tsdfDef, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+	cudaDeviceSynchronize();
+	freeTextureMemory();
+	cudaMemcpy(tsdfLiveGridDef, d_tsdfDef, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+
 	float* sliceTSDF = new float[m_gridW*m_gridH];
 	float* sliceGradX = new float[m_gridW*m_gridH];
 	float* sliceLapU = new float[m_gridW*m_gridH];
 	float* sliceHessXX = new float[m_gridW*m_gridH];
+	float* sliceTSDFDef = new float[m_gridW*m_gridH];
 
 	cv::Mat m_tsdf(m_gridH, m_gridW, CV_32F);	
 	cv::Mat m_grad_X(m_gridH, m_gridW, CV_32F);
 	cv::Mat m_lapU(m_gridH, m_gridW, CV_32F);
 	cv::Mat m_hessXX(m_gridH, m_gridW, CV_32F);
+	cv::Mat m_tsdfDef(m_gridH, m_gridW, CV_32F);
 	/*for (int i = 0; i < 256; i++)
 	{
 	getSlice(sliceTSDF, tsdfLiveGrid, i);
@@ -200,7 +226,7 @@ void Optimizer::test(float* optimDeformationU, float* optimDeformationV, float* 
 	cv::minMaxLoc(m_tsdf, &min, &max);
 	std::cout << "Slice[ " << i << "]. Min: " << min << ". Max: " << max << std::endl;
 	}*/
-
+	getSlice(sliceTSDFDef, tsdfLiveGridDef, 128);
 	getSlice(sliceTSDF, tsdfLiveGrid, 128);
 	getSlice(sliceGradX, gradX, 128);
 	getSlice(sliceLapU, lapU, 128);
@@ -209,6 +235,7 @@ void Optimizer::test(float* optimDeformationU, float* optimDeformationV, float* 
 	convertLayeredToMat(m_grad_X, sliceGradX);
 	convertLayeredToMat(m_lapU, sliceLapU);
 	convertLayeredToMat(m_hessXX, sliceHessXX);
+	convertLayeredToMat(m_tsdfDef, sliceTSDFDef);
 	double min, max, minGrad, maxGrad, minLap, maxLap, minHessXX, maxHessXX;
 	cv::minMaxLoc(m_tsdf, &min, &max);
 	cv::minMaxLoc(m_grad_X, &minGrad, &maxGrad);
@@ -216,6 +243,7 @@ void Optimizer::test(float* optimDeformationU, float* optimDeformationV, float* 
 	cv::minMaxLoc(m_hessXX, &minHessXX, &maxHessXX);
 	std::cout << "Min: " << min << ". Max: " << max << std::endl;
 	showImage("TSDF", (m_tsdf - min) / (max - min), 100, 100);
+	showImage("TSDF Deform", (m_tsdfDef - min) / (max - min), 100, 100);
 	showImage("Grad X", (m_grad_X - minGrad) / (maxGrad - minGrad), 100+40, 100);
 	showImage("Laplacian U", m_lapU, 100+40, 100); //(m_lapU - minLap) / (maxLap - minLap)
 	showImage("Hessian XX", (m_hessXX - minHessXX) / (maxHessXX - minHessXX), 100+40, 100);

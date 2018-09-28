@@ -137,9 +137,12 @@ int main(int argc, char *argv[])
 	float* deformationU = new float[gridW*gridH*gridD];
 	float* deformationV = new float[gridW*gridH*gridD];
 	float* deformationW = new float[gridW*gridH*gridD];
-	std::memset(deformationU, 0, (gridW*gridH*gridD)*sizeof(float));
-	std::memset(deformationV, 0, (gridW*gridH*gridD)*sizeof(float));
-	std::memset(deformationW, 0, (gridW*gridH*gridD)*sizeof(float));
+    for (size_t i = 0; i < gridW*gridH*gridD; i++)
+    {
+        deformationU[i] = 0.0f;
+        deformationV[i] = 0.0f; 
+        deformationW[i] = 0.0f;   
+    }
 	Optimizer* optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gridW, gridH, gridD);
 
     // create windows
@@ -192,7 +195,7 @@ int main(int argc, char *argv[])
         	tsdfLive->integrate(poseVolume, color, depth);
 
 			// TODO: perform optimization
-			optimizer->test(deformationU, deformationV, deformationW, tsdfGlobal);
+			optimizer->test(tsdfLive);
 			// TODO: update global model
 			
 		}
