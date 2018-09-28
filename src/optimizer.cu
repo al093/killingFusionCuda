@@ -114,32 +114,6 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	
 	do
 	{
-		/* Test convolution
-		{
-			m_deformationFieldU = new float[27];
-			for (int i = 0; i < 27; i++)
-			{
-				m_deformationFieldU[i] = 0.0;
-			}
-			m_deformationFieldU[4] = 1.0;
-			m_deformationFieldV = new float[27];
-			for (int i = 0; i < 27; i++)
-			{
-				m_deformationFieldV[i] = 0.0;
-			}
-			m_deformationFieldV[7] = 1.0;
-			m_deformationFieldW = new float[27];
-			for (int i = 0; i < 27; i++)
-			{
-				m_deformationFieldW[i] = 0.0;
-			}
-			m_deformationFieldW[22] = 1.0;
-		}
-
-		cudaMemcpy(m_d_deformationFieldU, m_deformationFieldU, (3 * 3 * 3) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-		cudaMemcpy(m_d_deformationFieldV, m_deformationFieldV, (3 * 3 * 3) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-		cudaMemcpy(m_d_deformationFieldW, m_deformationFieldW, (3 * 3 * 3) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-		*/
 		// Copy necessary arrays from host to device
 		cudaMemcpy(m_d_deformationFieldU, m_deformationFieldU, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 		cudaMemcpy(m_d_deformationFieldV, m_deformationFieldV, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
@@ -333,39 +307,8 @@ void Optimizer::computeDivergence(float* divOut, const float* gridInU, const flo
     computeConvolution3D(m_d_dv, gridInV, kernelDy, kradius, w, h, d);
 	computeConvolution3D(m_d_dw, gridInW, kernelDz, kradius, w, h, d);
 
-	/* Test convolution
-	{
-		std::cout << "Sizes: " << w << ", " << h << ", " << d << std::endl;
-		float* out_dx = new float[27];
-		float* out_dy = new float[27];
-		float* out_dz = new float[27];
-		cudaMemcpy(out_dx, m_d_dx, (h * w * d) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-		for (int i = 0; i < 27; i++)
-		{
-			std::cout << "Dx[" << i << "]: " << out_dx[i] << std::endl;
-		}
-		cudaMemcpy(out_dy, m_d_dy, (h * w * d) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-		for (int i = 0; i < 27; i++)
-		{
-			std::cout << "Dy[" << i << "]: " << out_dy[i] << std::endl;
-		}
-		cudaMemcpy(out_dz, m_d_dz, (h * w * d) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-		for (int i = 0; i < 27; i++)
-		{
-			std::cout << "Dz[" << i << "]: " << out_dz[i] << std::endl;
-		}
-	}*/
 	// Sum the three gradient components
 	computeDivergence3DCuda(divOut, m_d_du, m_d_dv, m_d_dw, w, h, d);
-	/* Test divergence
-	{
-		float* out_div = new float[27];
-		cudaMemcpy(out_div, divOut, (3 * 3 * 3) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-		for (int i = 0; i < 27; i++)
-		{
-			std::cout << "Div[" << i << "]: " << out_div[i] << std::endl;
-		}
-	}*/
 }
 
 void Optimizer::computeLapacian(float* lapOut, const float* deformationIn, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d)
