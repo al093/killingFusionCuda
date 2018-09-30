@@ -15,7 +15,6 @@ const float m_kernelDzCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.
 									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f};
 
-
 class Optimizer
 {
 public:
@@ -75,8 +74,13 @@ protected:
 	float* m_d_dv = NULL;
 	float* m_d_dw = NULL;
 	float* m_d_div = NULL;
-	float* m_d_lapu = NULL;
-    
+    float* m_d_divX = NULL;
+    float* m_d_divY = NULL;
+    float* m_d_divZ = NULL;
+	float* m_d_lapU = NULL;
+    float* m_d_lapV = NULL;
+    float* m_d_lapW = NULL;
+
 	// Interpolated grids
 	float* m_d_tsdfLiveDeform = NULL;
 	float* m_d_sdfDxDeform = NULL;

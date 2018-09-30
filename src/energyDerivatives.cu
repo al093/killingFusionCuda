@@ -31,10 +31,10 @@ void computeDataTermDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *
 }
 
 __global__
-void computeDataTermDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW, 
+void computeLevelSetDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW, 
                                const float *d_hessPhiXX, const float *d_hessPhiXY, const float *d_hessPhiXZ,
                                const float *d_hessPhiYY, const float *d_hessPhiYZ, const float *d_hessPhiZZ,
-                               const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
+                               const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ, const float wk,
                                const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
@@ -56,8 +56,41 @@ void computeDataTermDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *
     }
 }
 
+__global__
+void computeMotionRegularizerDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW,
+                                              const float *d_lapU, const float *d_lapV, const float *d_lapW,
+                                              const float *d_divX, const float *d_divY, const float *d_divZ,
+                                              const float ws, const float gamma,
+                                              const size_t width, const size_t height, const size_t depth)
+{
+    int x = threadIdx.x + blockIdx.x*blockDim.x;
+    int y = threadIdx.y + blockIdx.y*blockDim.y;
+    int z = threadIdx.z + blockIdx.z*blockDim.z;
 
-void computeDataTermDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW, 
+    if(x<width && y<height && z<depth)
+    {
+        size_t idx = x + y*width + z*width*height;
+        d_dEdataU[idx] += -2.0*ws*d_lapU[idx] -2.0*ws*gamma*d_divX[idx];
+        d_dEdataV[idx] += -2.0*ws*d_lapV[idx] -2.0*ws*gamma*d_divY[idx];
+        d_dEdataW[idx] += -2.0*ws*d_lapW[idx] -2.0*ws*gamma*d_divZ[idx];
+    }
+}
+__global__
+void addArrayKernel(float* d_arrayA, const float* d_arrayB, const float scalar,
+              const size_t width, const size_t height, const size_t depth)
+{
+    int x = threadIdx.x + blockIdx.x*blockDim.x;
+    int y = threadIdx.y + blockIdx.y*blockDim.y;
+    int z = threadIdx.z + blockIdx.z*blockDim.z;
+
+    if(x<width && y<height && z<depth)
+    {
+        size_t idx = x + y*width + z*width*height;
+        d_arrayA[idx] += scalar*d_arrayB[idx];
+    }
+}
+
+void computeDataTermDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW,
                                const float *d_phiNDeformed, const float *d_phiGlobal,
                                const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
                                const size_t width, const size_t height, const size_t depth)
@@ -71,19 +104,44 @@ void computeDataTermDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEda
                                                      width, height, depth);
 }
 
-
 void computeLevelSetDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW, 
                                const float *d_hessPhiXX, const float *d_hessPhiXY, const float *d_hessPhiXZ,
                                const float *d_hessPhiYY, const float *d_hessPhiYZ, const float *d_hessPhiZZ,
-                               const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
+                               const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ, const float wk,
                                const size_t width, const size_t height, const size_t depth)
 {
     dim3 blockSize(32, 8, 1);
     dim3 grid = computeGrid3D(blockSize, width, height, depth);
     
-    computeDataTermDerivativeKernel <<<grid, blockSize>>> (d_dEdataU, d_dEdataV, d_dEdataW, 
+    computeLevelSetDerivativeKernel <<<grid, blockSize>>> (d_dEdataU, d_dEdataV, d_dEdataW, 
                                                            d_hessPhiXX, d_hessPhiXY, d_hessPhiXZ,
                                                            d_hessPhiYY, d_hessPhiYZ, d_hessPhiZZ,
-                                                           d_gradPhiNDeformedX, d_gradPhiNDeformedY, d_gradPhiNDeformedZ,
+                                                           d_gradPhiNDeformedX, d_gradPhiNDeformedY, d_gradPhiNDeformedZ, wk,
                                                            width, height, depth);
+}
+
+void computeMotionRegularizerDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW,
+                                        const float *d_lapU, const float *d_lapV, const float *d_lapW,
+                                        const float *d_divX, const float *d_divY, const float *d_divZ,
+                                        const float ws, const float gamma,
+                                        const size_t width, const size_t height, const size_t depth)
+{
+    dim3 blockSize(32, 8, 1);
+    dim3 grid = computeGrid3D(blockSize, width, height, depth);
+    
+    computeMotionRegularizerDerivativeKernel <<<grid, blockSize>>> (d_dEdataU, d_dEdataV, d_dEdataW,
+                                                                    d_lapU, d_lapV, d_lapW,
+                                                                    d_divX, d_divY, d_divZ,
+                                                                    ws, gamma,
+                                                                    width, height, depth);
+}
+
+void addArray(float* d_arrayA, const float* d_arrayB, const float scalar,
+              const size_t width, const size_t height, const size_t depth)
+{
+    dim3 blockSize(32, 8, 1);
+    dim3 grid = computeGrid3D(blockSize, width, height, depth);
+
+    addArrayKernel <<<grid, blockSize>>> (d_arrayA, d_arrayB, scalar,
+                                          width, height, depth);
 }

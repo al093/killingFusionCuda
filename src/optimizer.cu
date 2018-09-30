@@ -67,9 +67,14 @@ void Optimizer::allocateMemoryInDevice()
 
 	// Allocate divergence
 	cudaMalloc(&m_d_div, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMalloc(&m_d_divX, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMalloc(&m_d_divY, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMalloc(&m_d_divZ, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 
 	// Allocate laplacian
-	cudaMalloc(&m_d_lapu, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMalloc(&m_d_lapU, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMalloc(&m_d_lapV, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMalloc(&m_d_lapW, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 
 	// Allocate interpolated grids
 	cudaMalloc(&m_d_tsdfLiveDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -154,40 +159,64 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
     
 	do
 	{
-		// TODO: compute laplacians of the deformation field
-		
-		// TODO: compute divergence of deformation field
-
-		// TODO: interpolate TSDF Live Frame (EXAMPLE: HOW TO INTERPOLATE PHIn DEFORMED BY PSI)
+		//interpolate TSDF Live Frame (EXAMPLE: HOW TO INTERPOLATE PHIn DEFORMED BY PSI)
 		interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 		
         //interpolated the gradient of Phi_n wrt the psi
         interpTSDFDx->interpolate3D(m_d_sdfDxDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         interpTSDFDy->interpolate3D(m_d_sdfDyDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-		interpTSDFDz->interpolate3D(m_d_sdfDzDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        interpTSDFDz->interpolate3D(m_d_sdfDzDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         
-        //following function adds to the m_d_energyDu/v/w, so ensure that they were zero intially
+        //interpolate hessian wrt the psi
+        interpHessXX->interpolate3D(m_d_hessXXDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        interpHessXY->interpolate3D(m_d_hessXYDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        interpHessXZ->interpolate3D(m_d_hessXZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        interpHessYY->interpolate3D(m_d_hessYYDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        interpHessYZ->interpolate3D(m_d_hessYZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        interpHessZZ->interpolate3D(m_d_hessZZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+
+        //the following derivative functions adds to the m_d_energyDu/v/w, so ensure that they were zero intially
         cudaMemset(m_d_energyDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
         cudaMemset(m_d_energyDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
         cudaMemset(m_d_energyDw, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 
-        //compute dEdata term
+        //compute data term derivatives
         computeDataTermDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
                                   m_d_tsdfLiveDeform, m_d_tsdfGlobal,
                                   m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
                                   m_gridW, m_gridH, m_gridD);
 
-		// TODO: interpolate on hessian of tsdfLive
+        //add the derivatives from the levelSet Derivatives with a scalar constant wk
+        computeLevelSetDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
+                                  m_d_hessXXDeform, m_d_hessXYDeform, m_d_hessXZDeform,
+                                  m_d_hessYYDeform, m_d_hessYZDeform, m_d_hessZZDeform,
+                                  m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
+                                  m_wk,
+                                  m_gridW, m_gridH, m_gridD);
 
+        //compute laplacians of the deformation field
+        computeLapacian(m_d_lapU, m_d_deformationFieldU, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
+        computeLapacian(m_d_lapV, m_d_deformationFieldV, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
+        computeLapacian(m_d_lapW, m_d_deformationFieldW, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
 
+        //compute divergence and then the gradients of the divergence of deformation field
+        computeDivergence(m_d_div, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
+        computeGradient(m_d_divX, m_d_divY, m_d_divZ, m_d_div, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
+        
+        //TODO make gamma (the killing field weight) a member variable
+        float gamma = 0.9;
+        
+        //compute motion regularizer derivative
+        computeMotionRegularizerDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
+                                           m_d_lapU, m_d_lapV, m_d_lapW,
+                                           m_d_divX, m_d_divY, m_d_divZ,
+                                           m_ws, gamma,
+                                           m_gridW, m_gridH, m_gridD);
 
-		// TODO: compute dEkilling term
-
-		// TODO: compute dElevel_set term
-
-		// TODO compute dEnon_rigid
-
-		// TODO: update new state of the deformation field
+        //update new state of the deformation field
+        addArray(m_d_deformationFieldU, m_d_energyDu, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
+        addArray(m_d_deformationFieldV, m_d_energyDv, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
+        addArray(m_d_deformationFieldW, m_d_energyDw, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
 
 	} while (currentMaxVectorUpdate > MAX_VECTOR_UPDATE_THRESHOLD);
 }
@@ -211,14 +240,14 @@ void Optimizer::test(TSDFVolume* tsdfLive)
 	// TODO: compute gradient of tsdfLive
 	cudaMemcpy(m_d_tsdfLive, tsdfLiveGrid, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 	computeGradient(m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_tsdfLive, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-	computeLapacian(m_d_lapu, m_d_tsdfLive, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
+	computeLapacian(m_d_lapU, m_d_tsdfLive, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
 	computeHessian(m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ, m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
 	float* tsdfLiveGridDef = new float[m_gridW * m_gridH * m_gridD];
 	float* gradX = new float[m_gridW * m_gridH * m_gridD];
 	float* lapU = new float[m_gridW * m_gridH * m_gridD];
 	float* hessXX = new float[m_gridW * m_gridH * m_gridD];
 	cudaMemcpy(gradX, m_d_sdfDx, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-	cudaMemcpy(lapU, m_d_lapu, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+	cudaMemcpy(lapU, m_d_lapU, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 	cudaMemcpy(hessXX, m_d_hessXX, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 	// Interpolate
 	float* d_tsdfDef = NULL;
