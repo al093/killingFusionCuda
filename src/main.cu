@@ -95,6 +95,8 @@ int main(int argc, char *argv[])
         "{i|input| |input rgb-d sequence}"
         "{f|frames|10000|number of frames to process (0=all)}"
         "{n|iterations|100|max number of GD iterations}"
+        "{a|alpha|0.1|Gradient Descent step size}"
+        
     };
     cv::CommandLineParser cmd(argc, argv, params);
 
@@ -108,12 +110,18 @@ int main(int argc, char *argv[])
         //return 1;
     }
     std::cout << "input sequence: " << inputSequence << std::endl;
+
     // number of frames to process
     size_t frames = (size_t)cmd.get<int>("frames");
     std::cout << "# frames: " << frames << std::endl;
+
     // max number of GD iterations
     size_t iterations = (size_t)cmd.get<int>("iterations");
     std::cout << "iterations: " << iterations << std::endl;
+
+    // GD step size
+    float alpha = (float)cmd.get<float>("alpha");
+    std::cout << "Gradient Descent step: " << alpha << std::endl;
 
     // initialize cuda context
     cudaDeviceSynchronize(); CUDA_CHECK;
@@ -129,20 +137,24 @@ int main(int argc, char *argv[])
 
     // create tsdf volume
 	size_t gridW = 256, gridH = 256, gridD = 256;
-	float alpha = 0.1, wk = 0.5, ws = 0.2;
+	float wk = 0.5, ws = 0.2;
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(1.0f, 1.0f, 1.0f);
     TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K);
 	TSDFVolume* tsdfLive = new TSDFVolume(volDim, volSize, K);
-	float* deformationU = new float[gridW*gridH*gridD];
-	float* deformationV = new float[gridW*gridH*gridD];
-	float* deformationW = new float[gridW*gridH*gridD];
-    for (size_t i = 0; i < gridW*gridH*gridD; i++)
-    {
-        deformationU[i] = 20.7f;
-        deformationV[i] = -15.2f; 
-        deformationW[i] = 0.0f;   
-    }
+	
+    //initialize the deformation to zero initially
+    float* deformationU = (float*)calloc(gridW*gridH*gridD, sizeof(float));
+	float* deformationV = (float*)calloc(gridW*gridH*gridD, sizeof(float));
+	float* deformationW = (float*)calloc(gridW*gridH*gridD, sizeof(float));
+
+    // for (size_t i = 0; i < gridW*gridH*gridD; i++)
+    // {
+        // deformationU[i] = 20.7f;
+        // deformationV[i] = -15.2f; 
+        // deformationW[i] = 0.0f;   
+    // }
+    
 	Optimizer* optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gridW, gridH, gridD);
 
     // create windows
@@ -155,12 +167,14 @@ int main(int argc, char *argv[])
     cv::Mat color, depth, mask;
     for (size_t i = 0; i < frames; ++i)
     {
+        std::cout<< "\n Loading Frame: " << i;
+
         // load input frame
         if (!loadFrame(inputSequence, i, color, depth, mask))
         {
-            //std::cerr << "Frame " << i << " could not be loaded!" << std::endl;
-            //return 1;
-            break;
+            std::cerr << "Frame " << i << " could not be loaded!" << std::endl;
+            return 1;
+            //break;
         }
 
         // filter depth values outside of mask

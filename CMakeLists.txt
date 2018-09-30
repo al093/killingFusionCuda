@@ -95,10 +95,13 @@ CUDA_ADD_EXECUTABLE(${APP_NAME}
         src/divergence.cuh src/divergence.cu
         src/optimizer.cuh src/optimizer.cu
         src/energyDerivatives.cuh src/energyDerivatives.cu
+        src/energy.cuh src/energy.cu
+        src/reduction.cuh src/reduction.cu
         src/interpolator.cuh src/interpolator.cu
         src/mat.h
         src/main.cu
 )
+CUDA_ADD_CUBLAS_TO_TARGET(${APP_NAME})
 TARGET_LINK_LIBRARIES(${APP_NAME} ${OpenCV_LIBS})
 TARGET_COMPILE_OPTIONS(${APP_NAME} PRIVATE -std=c++11)
 
