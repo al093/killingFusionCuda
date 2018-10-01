@@ -4,7 +4,7 @@
 
 
 
-const float MAX_VECTOR_UPDATE_THRESHOLD = 0.025;
+const float MAX_VECTOR_UPDATE_THRESHOLD = 0.1 / 4.0; // Threshold: 0.1mm -> (/ 4mm per voxel, / alpha)
 const float m_kernelDxCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -106,5 +106,8 @@ protected:
     float* m_d_energyDu = NULL;
     float* m_d_energyDv = NULL;
     float* m_d_energyDw = NULL;
+
+	// Magnitude
+    float* m_d_magnitude = NULL;
 };
 

@@ -93,6 +93,7 @@ CUDA_ADD_EXECUTABLE(${APP_NAME}
         src/helper.cuh src/helper.cu
         src/convolution.cuh src/convolution.cu
         src/divergence.cuh src/divergence.cu
+		src/magnitude.cuh src/magnitude.cu
         src/optimizer.cuh src/optimizer.cu
         src/energyDerivatives.cuh src/energyDerivatives.cu
         src/energy.cuh src/energy.cu
@@ -113,6 +114,7 @@ TARGET_COMPILE_OPTIONS(${APP_NAME} PRIVATE -std=c++11)
         # src/helper.cuh src/helper.cu
         # src/convolution.cuh src/convolution.cu
         # src/divergence.cuh src/divergence.cu
+		# src/magnitude.cuh src/magnitude.cu
         # src/optimizer.cuh src/optimizer.cu
         # src/energyDerivatives.cuh src/energyDerivatives.cu
         # src/interpolator.cuh src/interpolator.cu

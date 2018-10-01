@@ -12,6 +12,7 @@
 #include "energyDerivatives.cuh"
 #include "interpolator.cuh"
 #include "reduction.cuh"
+#include "magnitude.cuh"
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -94,6 +95,9 @@ void Optimizer::allocateMemoryInDevice()
 	cudaMalloc(&m_d_hessYYDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_hessYZDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_hessZZDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
+	// Allocate magnitude grid
+	cudaMalloc(&m_d_magnitude, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 
     //Allocate and initialize to zero the memory for the gradients of energy
     cudaMalloc(&m_d_energyDu, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -237,8 +241,8 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
         //find the energy of the Killing term. may be removed for normal runs
         computeGradient(m_d_dux, m_d_duy, m_d_duz, m_d_deformationFieldU, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-        computeGradient(m_d_dvx, m_d_dvy, m_d_dvz, m_d_deformationFieldU, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-        computeGradient(m_d_dwx, m_d_dwy, m_d_dwz, m_d_deformationFieldU, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
+        computeGradient(m_d_dvx, m_d_dvy, m_d_dvz, m_d_deformationFieldV, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
+        computeGradient(m_d_dwx, m_d_dwy, m_d_dwz, m_d_deformationFieldW, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
         float killingEnergy = 0.0;
         computeKillingEnergy(&killingEnergy, gamma,
                               m_d_dux, m_d_duy, m_d_duz,
@@ -253,11 +257,13 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         addArray(m_d_deformationFieldW, m_d_energyDw, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
 
         //calculate currentMaxVectorUpdate
-        float maxU, maxV, maxW;
-        maxU = maxV = maxW = 0.0;
-        findAbsMax(&maxU, m_d_energyDu, m_gridW, m_gridH, m_gridD);
-        findAbsMax(&maxV, m_d_energyDv, m_gridW, m_gridH, m_gridD);
-        findAbsMax(&maxW, m_d_energyDw, m_gridW, m_gridH, m_gridD);
+        /*float maxMagnitude;
+        maxU = maxV = maxW = 0.0;*/
+		currentMaxVectorUpdate = 0.0;
+		computeMagnitude(m_d_magnitude, m_d_energyDu, m_d_energyDv, m_d_energyDw, m_gridW, m_gridH, m_gridD);
+        findAbsMax(&currentMaxVectorUpdate, m_d_magnitude, m_gridW, m_gridH, m_gridD);
+        //findAbsMax(&maxV, m_d_energyDv, m_gridW, m_gridH, m_gridD);
+        //findAbsMax(&maxW, m_d_energyDw, m_gridW, m_gridH, m_gridD);
 
         // //debug Code ---------------------------------------------------------
 
@@ -292,12 +298,12 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         // cudaFree(d_test);
         // ///[END]Debug code ---------------------------------------
 
-        if(maxU > maxV && maxU > maxW) currentMaxVectorUpdate = maxU;
+        /*if(maxU > maxV && maxU > maxW) currentMaxVectorUpdate = maxU;
         else if(maxV> maxU && maxV>maxW) currentMaxVectorUpdate = maxV;
-        else currentMaxVectorUpdate = maxW;
-        std::cout<<"| Abs Max update: " << currentMaxVectorUpdate;
+        else currentMaxVectorUpdate = maxW;*/
+        std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate;
 
-	} while (currentMaxVectorUpdate > MAX_VECTOR_UPDATE_THRESHOLD);
+	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD);
 }
 
 
@@ -553,7 +559,7 @@ void Optimizer::optimizeTest(TSDFVolume* tsdfLive)
         else currentMaxVectorUpdate = maxW;
         std::cout<<"| Abs Max update: " << currentMaxVectorUpdate;
 
-    } while (false);//currentMaxVectorUpdate > MAX_VECTOR_UPDATE_THRESHOLD);
+    } while (false);//(m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD);
 }
 
 
