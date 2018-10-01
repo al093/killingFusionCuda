@@ -23,6 +23,7 @@ public:
     ~Optimizer();
 
 	void optimize(TSDFVolume* tsdfLive);
+	void optimizeTest(TSDFVolume* tsdfLive);
 	void test(TSDFVolume* tsdfLive);
 
 protected:

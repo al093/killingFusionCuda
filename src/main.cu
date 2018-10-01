@@ -148,14 +148,14 @@ int main(int argc, char *argv[])
 	float* deformationV = (float*)calloc(gridW*gridH*gridD, sizeof(float));
 	float* deformationW = (float*)calloc(gridW*gridH*gridD, sizeof(float));
 
-    // for (size_t i = 0; i < gridW*gridH*gridD; i++)
-    // {
-        // deformationU[i] = 20.7f;
-        // deformationV[i] = -15.2f; 
-        // deformationW[i] = 0.0f;   
-    // }
+    for (size_t i = 0; i < gridW*gridH*gridD; i++)
+    {
+        deformationU[i] = 0.0f;
+        deformationV[i] = 0.0f; 
+        deformationW[i] = 0.0f;   
+    }
     
-	Optimizer* optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gridW, gridH, gridD);
+	Optimizer* optimizer;
 
     // create windows
     cv::namedWindow("color");
@@ -196,6 +196,7 @@ int main(int argc, char *argv[])
             poseVolume.topRightCorner<3,1>() = transCentroid;
             std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
 			tsdfGlobal->integrate(poseVolume, color, depth);
+			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gridW, gridH, gridD);
         }
 		else
 		{
@@ -209,7 +210,7 @@ int main(int argc, char *argv[])
         	tsdfLive->integrate(poseVolume, color, depth);
 
 			// TODO: perform optimization
-			optimizer->optimize(tsdfLive);
+			optimizer->optimize(tsdfGlobal);
 			// TODO: update global model
 			
 		}
