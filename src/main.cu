@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
     std::cout << "K: " << std::endl << K << std::endl;
 
     // create tsdf volume
-	size_t gridW = 256, gridH = 256, gridD = 256;
+    size_t gridW = 80, gridH = 80, gridD = 80;
 	float wk = 0.5, ws = 0.2;
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(1.0f, 1.0f, 1.0f);

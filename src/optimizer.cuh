@@ -4,7 +4,7 @@
 
 
 
-const float MAX_VECTOR_UPDATE_THRESHOLD = 0.1;
+const float MAX_VECTOR_UPDATE_THRESHOLD = 0.025;
 const float m_kernelDxCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -52,9 +52,18 @@ protected:
 	float* m_d_sdfDz = NULL;
 
 	// Gradients of deformation field
+    //TODO these variables may not be needed during normal runtimes, only needed for debugging
+    //but the laplacian function uses m_d_dux/y/z as temp variables!!
 	float* m_d_dux = NULL;
 	float* m_d_duy = NULL;
 	float* m_d_duz = NULL;
+
+    float* m_d_dvx = NULL;
+    float* m_d_dvy = NULL;
+    float* m_d_dvz = NULL;
+    float* m_d_dwx = NULL;
+    float* m_d_dwy = NULL;
+    float* m_d_dwz = NULL;
 
 	// Hessian
 	float* m_d_hessXX = NULL;

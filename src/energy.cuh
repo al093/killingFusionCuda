@@ -14,7 +14,10 @@ void computeLevelSetEnergy(float *levelSetEnergy,
                            const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
                            const size_t width, const size_t height, const size_t depth);
 
-//TODO to be implemented
-void computeMotionRegularizerEnergy();
+void computeKillingEnergy(float *killingEnergy, const float gamma,
+                          const float* d_dux, const float* d_duy, const float* d_duz,
+                          const float* d_dvx, const float* d_dvy, const float* d_dvz,
+                          const float* d_dwx, const float* d_dwy, const float* d_dwz,
+                          const size_t width, const size_t height, const size_t depth);
 
 #endif
