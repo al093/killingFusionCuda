@@ -29,7 +29,7 @@ void computeMotionRegularizerDerivative(float *d_dEdataU, float *d_dEdataV, floa
 void addArray(float* d_arrayA, const float* d_arrayB, const float scalar,
               const size_t width, const size_t height, const size_t depth);
 
-void addWeightedArray(float* arrayOut, const float* arrayIn1, const float* arrayIn2,
-					  const float weight1, const float weight2, const size_t width, const size_t height, const size_t depth);
+void addWeightedArray(float* arrayOut, float* weightOut, const float* arrayIn1, const float* arrayIn2,
+					  const float* weight1, const float* weight2, const size_t width, const size_t height, const size_t depth);
 
 #endif

@@ -138,8 +138,9 @@ int main(int argc, char *argv[])
     // create tsdf volume
     size_t gridW = 80, gridH = 80, gridD = 80;
 	float wk = 0.5, ws = 0.2;
+	float voxelSize = 0.004; 		// Voxel size in mm
     Vec3i volDim(gridW, gridH, gridD);
-    Vec3f volSize(1.0f, 1.0f, 1.0f);
+    Vec3f volSize(gridW*voxelSize, gridH*voxelSize, gridD*voxelSize);
     TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K);
 	TSDFVolume* tsdfLive = new TSDFVolume(volDim, volSize, K);
 	
@@ -167,12 +168,12 @@ int main(int argc, char *argv[])
     cv::Mat color, depth, mask;
     for (size_t i = 0; i < frames; ++i)
     {
-        std::cout<< "\n Loading Frame: " << i;
+        std::cout << std::endl << " Loading Frame: " << i << std::endl;
 
         // load input frame
         if (!loadFrame(inputSequence, i, color, depth, mask))
         {
-            std::cerr << "Frame " << i << " could not be loaded!" << std::endl;
+            std::cerr << " ->Frame " << i << " could not be loaded!" << std::endl;
             return 1;
             //break;
         }
@@ -184,7 +185,7 @@ int main(int argc, char *argv[])
         cv::imshow("color", color);
         cv::imshow("depth", depth);
         cv::imshow("mask", mask);
-        cv::waitKey();
+        //cv::waitKey();
 
         // get initial volume pose from centroid of first depth map
         if (i == 0)
@@ -196,7 +197,15 @@ int main(int argc, char *argv[])
             poseVolume.topRightCorner<3,1>() = transCentroid;
             std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
 			tsdfGlobal->integrate(poseVolume, color, depth);
-			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gridW, gridH, gridD);
+			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, iterations, gridW, gridH, gridD);
+
+			MarchingCubes mc(volDim, volSize);
+    		mc.computeIsoSurface(tsdfGlobal->ptrTsdf(), tsdfGlobal->ptrTsdfWeights(), tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
+			const std::string meshFilename = inputSequence + "/mesh.ply";
+			if (!mc.savePly(meshFilename))
+			{
+				std::cerr << "Could not save mesh!" << std::endl;
+			}
         }
 		else
 		{
@@ -220,15 +229,18 @@ int main(int argc, char *argv[])
 
     // extract mesh using marching cubes
     std::cout << "Extracting mesh..." << std::endl;
-    MarchingCubes mc(volDim, volSize);
-    mc.computeIsoSurface(tsdfGlobal->ptrTsdf(), tsdfGlobal->ptrTsdfWeights(), tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
-
+	float* tsdfGlobalAccumulated = (float*)calloc(gridW*gridH*gridD, sizeof(float));
+	float* tsdfGlobalWeightsAccumulated = (float*)calloc(gridW*gridH*gridD, sizeof(float));
+	optimizer->getTSDFGlobalPtr(tsdfGlobalAccumulated);
+	optimizer->getTSDFGlobalWeightsPtr(tsdfGlobalWeightsAccumulated);
+	MarchingCubes mcAcc(volDim, volSize);
+	mcAcc.computeIsoSurface(tsdfGlobalAccumulated, tsdfGlobalWeightsAccumulated, tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
     // save mesh
     std::cout << "Saving mesh..." << std::endl;
-    const std::string meshFilename = inputSequence + "/mesh.ply";
-    if (!mc.savePly(meshFilename))
+	const std::string meshAccFilename = inputSequence + "/meshAcc.ply";
+	if (!mcAcc.savePly(meshAccFilename))
     {
-        std::cerr << "Could not save mesh!" << std::endl;
+        std::cerr << "Could not save accumulated mesh!" << std::endl;
     }
 
     // clean up

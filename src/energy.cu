@@ -87,6 +87,7 @@ void computeDataEnergy(float *dataEnergy, const float *d_phiNDeformed, const flo
 
     //calculate the sum of the energy
     cublasSasum(handle, width*height*depth, d_dataEnergyArray, sizeof(float), dataEnergy);
+	*dataEnergy = 0.5 * *dataEnergy;
     cublasDestroy(handle);
     cudaFree(d_dataEnergyArray);
 }

@@ -19,12 +19,16 @@ class Optimizer
 {
 public:
 
-    Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha, const float wk, const float ws, const size_t gridW, const size_t gridH, const size_t gridD);
+    Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha, const float wk, const float ws, const size_t maxIterations, const size_t gridW, const size_t gridH, const size_t gridD);
     ~Optimizer();
+
+	void getTSDFGlobalPtr(float* tsdfGlobalPtr);
+	void getTSDFGlobalWeightsPtr(float* tsdfGlobalWeightsPtr);
 
 	void optimize(TSDFVolume* tsdfLive);
 	void optimizeTest(TSDFVolume* tsdfLive);
 	void test(TSDFVolume* tsdfLive);
+	
 
 protected:
 	void allocateMemoryInDevice();
@@ -36,13 +40,13 @@ protected:
 	void getSlice(float* sliceOut, const float* gridIn, size_t sliceInd);
 
     TSDFVolume* m_tsdfGlobal;
-    float* m_d_tsdfGlobal = NULL, * m_d_tsdfLive = NULL;
+    float* m_d_tsdfGlobal = NULL, * m_d_tsdfLive = NULL, * m_d_tsdfGlobalWeights = NULL, * m_d_tsdfLiveWeights = NULL;
     float* m_deformationFieldU, * m_deformationFieldV, * m_deformationFieldW;
 	float* m_d_deformationFieldU, * m_d_deformationFieldV, * m_d_deformationFieldW;
     float m_alpha;
 	float m_wk;
 	float m_ws;
-	float m_weightModelAcc;
+	size_t m_maxIterations;
 	const size_t m_gridW, m_gridH, m_gridD;
 
 	float* m_d_kernelDx = NULL;

@@ -91,7 +91,7 @@ void addArrayKernel(float* d_arrayA, const float* d_arrayB, const float scalar, 
 }
 
 __global__
-void addWeightedArrayKernel(float* arrayOut, const float* arrayIn1, const float* arrayIn2, const float weight1, const float weight2, const size_t width, const size_t height, const size_t depth)
+void addWeightedArrayKernel(float* arrayOut, float* weightOut, const float* arrayIn1, const float* arrayIn2, const float* weight1, const float* weight2, const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
     int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -99,8 +99,10 @@ void addWeightedArrayKernel(float* arrayOut, const float* arrayIn1, const float*
 
     if(x < width && y < height && z < depth)
     {
-        size_t idx = x + y*width + z*width*height;
-        arrayOut[idx] += (weight1*arrayIn1[idx] + weight2*arrayIn2[idx]) / (weight1 + weight2);
+		size_t idx = x + y*width + z*width*height;
+		float sumWeights = max(weight1[idx], 0.0f) + max(weight2[idx], 0.0f);
+        arrayOut[idx] = (max(weight1[idx], 0.0f)*arrayIn1[idx] + max(weight2[idx], 0.0f)*arrayIn2[idx]) / (sumWeights + 0.00001f);
+		weightOut[idx] = sumWeights;
     }
 
 }
@@ -161,11 +163,11 @@ void addArray(float* d_arrayA, const float* d_arrayB, const float scalar,
                                           width, height, depth);
 }
 
-void addWeightedArray(float* arrayOut, const float* arrayIn1, const float* arrayIn2, const float weight1, const float weight2, const size_t width, const size_t height, const size_t depth)
+void addWeightedArray(float* arrayOut, float* weightOut, const float* arrayIn1, const float* arrayIn2, const float* weight1, const float* weight2, const size_t width, const size_t height, const size_t depth)
 {
     dim3 blockSize(32, 8, 1);
     dim3 grid = computeGrid3D(blockSize, width, height, depth);
 
-    addWeightedArrayKernel <<<grid, blockSize>>> (arrayOut, arrayIn1, arrayIn2, weight1, weight1, width, height, depth);
+    addWeightedArrayKernel <<<grid, blockSize>>> (arrayOut, weightOut, arrayIn1, arrayIn2, weight1, weight2, width, height, depth);
 
 }
