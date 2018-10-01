@@ -42,6 +42,7 @@ protected:
     float m_alpha;
 	float m_wk;
 	float m_ws;
+	float m_weightModelAcc;
 	const size_t m_gridW, m_gridH, m_gridD;
 
 	float* m_d_kernelDx = NULL;

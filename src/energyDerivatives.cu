@@ -75,19 +75,34 @@ void computeMotionRegularizerDerivativeKernel(float *d_dEdataU, float *d_dEdataV
         d_dEdataW[idx] += -2.0*wk*d_lapW[idx] -2.0*wk*gamma*d_divZ[idx];
     }
 }
+
 __global__
-void addArrayKernel(float* d_arrayA, const float* d_arrayB, const float scalar,
-              const size_t width, const size_t height, const size_t depth)
+void addArrayKernel(float* d_arrayA, const float* d_arrayB, const float scalar, const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
     int y = threadIdx.y + blockIdx.y*blockDim.y;
     int z = threadIdx.z + blockIdx.z*blockDim.z;
 
-    if(x<width && y<height && z<depth)
+    if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
         d_arrayA[idx] += scalar*d_arrayB[idx];
     }
+}
+
+__global__
+void addWeightedArrayKernel(float* arrayOut, const float* arrayIn1, const float* arrayIn2, const float weight1, const float weight2, const size_t width, const size_t height, const size_t depth)
+{
+    int x = threadIdx.x + blockIdx.x*blockDim.x;
+    int y = threadIdx.y + blockIdx.y*blockDim.y;
+    int z = threadIdx.z + blockIdx.z*blockDim.z;
+
+    if(x < width && y < height && z < depth)
+    {
+        size_t idx = x + y*width + z*width*height;
+        arrayOut[idx] += (weight1*arrayIn1[idx] + weight2*arrayIn2[idx]) / (weight1 + weight2);
+    }
+
 }
 
 void computeDataTermDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW,
@@ -144,4 +159,13 @@ void addArray(float* d_arrayA, const float* d_arrayB, const float scalar,
 
     addArrayKernel <<<grid, blockSize>>> (d_arrayA, d_arrayB, scalar,
                                           width, height, depth);
+}
+
+void addWeightedArray(float* arrayOut, const float* arrayIn1, const float* arrayIn2, const float weight1, const float weight2, const size_t width, const size_t height, const size_t depth)
+{
+    dim3 blockSize(32, 8, 1);
+    dim3 grid = computeGrid3D(blockSize, width, height, depth);
+
+    addWeightedArrayKernel <<<grid, blockSize>>> (arrayOut, arrayIn1, arrayIn2, weight1, weight1, width, height, depth);
+
 }

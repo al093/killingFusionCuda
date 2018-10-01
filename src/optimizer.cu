@@ -24,6 +24,7 @@ Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* 
     m_alpha(alpha),
 	m_wk(wk),
 	m_ws(ws),
+	m_weightModelAcc(1.0),
 	m_gridW(gridW), 
 	m_gridH(gridH),
 	m_gridD(gridD)
@@ -304,6 +305,12 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate;
 
 	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD);
+	
+	// Update TSDF Global using a weighted averaging scheme
+	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+	addWeightedArray(m_d_tsdfGlobal, m_d_tsdfGlobal, m_d_tsdfLiveDeform, m_weightModelAcc, 1.0, m_gridW, m_gridH, m_gridD);
+	m_weightModelAcc = m_weightModelAcc + 1.0;
+	std::cout << "New weight: " << m_weightModelAcc << std::endl;
 }
 
 
