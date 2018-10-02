@@ -32,4 +32,7 @@ void addArray(float* d_arrayA, const float* d_arrayB, const float scalar,
 void addWeightedArray(float* arrayOut, float* weightOut, const float* arrayIn1, const float* arrayIn2,
 					  const float* weight1, const float* weight2, const size_t width, const size_t height, const size_t depth);
 
+void multiplyArrays(float* arrayOut, const float* arrayIn1, const float* arrayIn2,
+            const size_t width, const size_t height, const size_t depth);
+
 #endif

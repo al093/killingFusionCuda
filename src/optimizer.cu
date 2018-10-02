@@ -267,6 +267,11 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
                               m_gridW, m_gridH, m_gridD);
         std::cout<< "| Killing Energy: " << killingEnergy;
 
+        //multiply by weights
+        multiplyArrays(m_d_energyDu, m_d_energyDu, m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
+        multiplyArrays(m_d_energyDv, m_d_energyDv, m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
+        multiplyArrays(m_d_energyDw, m_d_energyDw, m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
+
         //update new state of the deformation field
         addArray(m_d_deformationFieldU, m_d_energyDu, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
         addArray(m_d_deformationFieldV, m_d_energyDv, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);

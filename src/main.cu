@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
         "{f|frames|10000|number of frames to process (0=all)}"
         "{n|iterations|100|max number of GD iterations}"
         "{a|alpha|0.1|Gradient Descent step size}"
+        "{b|begin|0|First frame id to begin with}"
         
     };
     cv::CommandLineParser cmd(argc, argv, params);
@@ -123,6 +124,10 @@ int main(int argc, char *argv[])
     float alpha = (float)cmd.get<float>("alpha");
     std::cout << "Gradient Descent step: " << alpha << std::endl;
 
+    // First frame id
+    size_t firstFrameId = (float)cmd.get<float>("begin");
+    std::cout << "First frame of sequence: " << firstFrameId << std::endl;
+
     // initialize cuda context
     cudaDeviceSynchronize(); CUDA_CHECK;
 
@@ -142,8 +147,7 @@ int main(int argc, char *argv[])
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(gridW*voxelSize, gridH*voxelSize, gridD*voxelSize);
     TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K);
-	TSDFVolume* tsdfLive = new TSDFVolume(volDim, volSize, K);
-	
+    TSDFVolume* tsdfLive;
     //initialize the deformation to zero initially
     float* deformationU = (float*)calloc(gridW*gridH*gridD, sizeof(float));
 	float* deformationV = (float*)calloc(gridW*gridH*gridD, sizeof(float));
@@ -166,16 +170,16 @@ int main(int argc, char *argv[])
     // process frames
     Mat4f poseVolume = Mat4f::Identity();
     cv::Mat color, depth, mask;
-    for (size_t i = 0; i < frames; ++i)
+    for (size_t i = firstFrameId; i < frames; ++i)
     {
+        tsdfLive = new TSDFVolume(volDim, volSize, K);
         std::cout << std::endl << " Loading Frame: " << i << std::endl;
 
         // load input frame
         if (!loadFrame(inputSequence, i, color, depth, mask))
         {
             std::cerr << " ->Frame " << i << " could not be loaded!" << std::endl;
-            return 1;
-            //break;
+            break;
         }
 
         // filter depth values outside of mask
@@ -188,7 +192,7 @@ int main(int argc, char *argv[])
         //cv::waitKey();
 
         // get initial volume pose from centroid of first depth map
-        if (i == 0)
+        if (i == firstFrameId)
         {
             // initial pose for volume by computing centroid of first depth/vertex map
             cv::Mat vertMap;
@@ -218,13 +222,23 @@ int main(int argc, char *argv[])
 			// integrate frame into tsdf volume
         	tsdfLive->integrate(poseVolume, color, depth);
 
+            /*float max = -9999999, min=999999999;
+            for(int i = 0; i < 80*80*80; i++)
+            {
+                std::cout << "[" << i << "]: " << tsdfLive->ptrTsdfWeights()[i] << std::endl;
+                if (max < tsdfLive->ptrTsdfWeights()[i]) { max = tsdfLive->ptrTsdfWeights()[i];}
+                if (min > tsdfLive->ptrTsdfWeights()[i]) { min = tsdfLive->ptrTsdfWeights()[i];}
+            }
+            std::cout << "Max: " << max << std::endl;
+            std::cout << "Min: " << min << std::endl;*/
+
 			// TODO: perform optimization
 			optimizer->optimize(tsdfLive);
 			// TODO: update global model
 			
 		}
         // integrate frame into tsdf volume
-        
+        delete tsdfLive;
     }
 
     // extract mesh using marching cubes
@@ -245,7 +259,7 @@ int main(int argc, char *argv[])
 
     // clean up
     delete tsdfGlobal;
-	delete tsdfLive;
+	//delete tsdfLive;
 	delete optimizer;
     cv::destroyAllWindows();
 
