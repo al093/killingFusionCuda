@@ -324,6 +324,17 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	// Update TSDF Global using a weighted averaging scheme
 	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 	addWeightedArray(m_d_tsdfGlobal, m_d_tsdfGlobalWeights, m_d_tsdfGlobal, m_d_tsdfLiveDeform, m_d_tsdfGlobalWeights, m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
+
+	delete interpTSDFLive;
+	delete interpTSDFDx;
+	delete interpTSDFDy;
+	delete interpTSDFDz;
+	delete interpHessXX;
+	delete interpHessXY;
+	delete interpHessXZ;
+	delete interpHessYY;
+	delete interpHessYZ;
+	delete interpHessZZ;
 }
 
 

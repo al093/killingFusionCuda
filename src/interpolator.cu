@@ -91,49 +91,12 @@ void Interpolator::uploadToTextureMemory(float* h_phi, int w, int h, int d)
     texDescr.readMode = cudaReadModeElementType;
     cudaCreateTextureObject(&texPhil, &texRes, &texDescr, NULL);
     CUDA_CHECK;
-
-//-----------------------------------------------------------------------------------------
-  /*  // BEGIN WEB CODE
-       //curand Random Generator (needs compiler link -lcurand)
-        curandGenerator_t gen;
-        curandCreateGenerator(&gen,CURAND_RNG_PSEUDO_DEFAULT);
-        curandSetPseudoRandomGeneratorSeed(gen,1235ULL+i);
-        curandGenerateUniform(gen, d_NoiseTest, cubeSizeNoiseTest);//writing data to d_NoiseTest
-        curandDestroyGenerator(gen);
-
-        //cudaArray Descriptor
-        //cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float>();
-        //cuda Array
-        //cudaArray *d_cuArr;
-        //checkCudaErrors(cudaMalloc3DArray(&d_cuArr, &channelDesc, make_cudaExtent(SizeNoiseTest*sizeof(float),SizeNoiseTest,SizeNoiseTest), 0));
-        //cudaMemcpy3DParms copyParams = {0};
-        //copyParams.srcPtr   = make_cudaPitchedPtr(d_NoiseTest, SizeNoiseTest*sizeof(float), SizeNoiseTest, SizeNoiseTest);
-        //copyParams.dstArray = d_cuArr;
-        //copyParams.extent   = make_cudaExtent(SizeNoiseTest,SizeNoiseTest,SizeNoiseTest);
-        //copyParams.kind     = cudaMemcpyDeviceToDevice;
-        //checkCudaErrors(cudaMemcpy3D(&copyParams));
-        //Array creation End
-
-        cudaResourceDesc    texRes;
-        memset(&texRes, 0, sizeof(cudaResourceDesc));
-        texRes.resType = cudaResourceTypeArray;
-        texRes.res.array.array  = d_cuArr;
-        cudaTextureDesc     texDescr;
-        memset(&texDescr, 0, sizeof(cudaTextureDesc));
-        texDescr.normalizedCoords = false;
-        texDescr.filterMode = cudaFilterModeLinear;
-        texDescr.addressMode[0] = cudaAddressModeClamp;   // clamp
-        texDescr.addressMode[1] = cudaAddressModeClamp;
-        texDescr.addressMode[2] = cudaAddressModeClamp;
-        texDescr.readMode = cudaReadModeElementType;
-        checkCudaErrors(cudaCreateTextureObject(&texNoise[i], &texRes, &texDescr, NULL));
-    */
-    }
+}
 
 void Interpolator::freeTextureMemory()
 {
-    /*cudaUnbindTexture(phi);
-    cudaFreeArray(cuArray_phi);*/
+    cudaFreeArray(cuArray_phi1); CUDA_CHECK;
+	cudaDestroyTextureObject(texPhil); CUDA_CHECK;
 }
 
 
