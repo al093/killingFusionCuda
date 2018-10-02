@@ -4,7 +4,7 @@
 
 
 
-const float MAX_VECTOR_UPDATE_THRESHOLD = 0.1 / 4.0; // Threshold: 0.1mm -> (/ 4mm per voxel, / alpha)
+const float MAX_VECTOR_UPDATE_THRESHOLD = 0.1 / 8.0; // Threshold: 0.1mm -> (/ 4mm per voxel, / alpha)
 const float m_kernelDxCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -38,7 +38,6 @@ protected:
 	void computeDivergence(float* divOut, const float* gridInU, const float* gridInV, const float* gridInW, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
 	void computeLapacian(float* lapOut, const float* deformationIn, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d);
 	void computeHessian(float* hessOutXX, float* hessOutXY, float* hessOutXZ, float* hessOutYY, float* hessOutYZ, float* hessOutZZ, const float* gradX, const float* gradY, const float* gradZ, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d);
-	void getSlice(float* sliceOut, const float* gridIn, size_t sliceInd);
 
     TSDFVolume* m_tsdfGlobal;
     float* m_d_tsdfGlobal = NULL, * m_d_tsdfLive = NULL, * m_d_tsdfGlobalWeights = NULL, * m_d_tsdfLiveWeights = NULL;
@@ -109,6 +108,7 @@ protected:
 	float* m_d_hessYYDeform = NULL;
 	float* m_d_hessYZDeform = NULL;
 	float* m_d_hessZZDeform = NULL;
+	float* m_d_tsdfLiveWeightsDeform = NULL;
     
     float* m_d_energyDu = NULL;
     float* m_d_energyDv = NULL;

@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     // create tsdf volume
     size_t gridW = 80, gridH = 80, gridD = 80;
 	float wk = 0.5, ws = 0.2;
-	float voxelSize = 0.004; 		// Voxel size in m
+	float voxelSize = 0.008; 		// Voxel size in m
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(gridW*voxelSize, gridH*voxelSize, gridD*voxelSize);
     TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K);
@@ -222,11 +222,11 @@ int main(int argc, char *argv[])
 		else
 		{
             // initial pose for volume by computing centroid of first depth/vertex map
-            cv::Mat vertMap;
+            /*cv::Mat vertMap;
             depthToVertexMap(K, depth, vertMap);
             Vec3f transCentroid = centroid(vertMap);
             poseVolume.topRightCorner<3,1>() = transCentroid;
-            std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
+            std::cout << "pose centroid" << std::endl << poseVolume << std::endl;*/
 			// integrate frame into tsdf volume
         	tsdfLive->integrate(poseVolume, color, depth);
 

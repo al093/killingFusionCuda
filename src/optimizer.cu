@@ -13,6 +13,7 @@
 #include "interpolator.cuh"
 #include "reduction.cuh"
 #include "magnitude.cuh"
+#include "visualization.cuh"
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -101,6 +102,7 @@ void Optimizer::allocateMemoryInDevice()
 	cudaMalloc(&m_d_hessYYDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_hessYZDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	cudaMalloc(&m_d_hessZZDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+    cudaMalloc(&m_d_tsdfLiveWeightsDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 
 	// Allocate magnitude grid
 	cudaMalloc(&m_d_magnitude, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -185,6 +187,8 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	Interpolator *interpHessYZ = new Interpolator(m_d_hessYZ, m_gridW, m_gridH, m_gridD);
 	Interpolator *interpHessZZ = new Interpolator(m_d_hessZZ, m_gridW, m_gridH, m_gridD);
 	
+    Interpolator *interpLiveWeights = new Interpolator(m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
+
 	/* IN ORDER TO COMPUTE ENERGIES: 	PSI is m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW
 										PHIglobal is m_d_tsdfGlobal			PHIn is m_d_tsdfLive
 										GRADIENT OF PHIn IS: m_d_sdfDx, m_d_sdfDy, m_d_sdfDz
@@ -198,8 +202,8 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
     int itr = 0;
 	do
 	{
-        std::cout<<"\nGD itr num: " << ++itr;
-        
+        std::cout<<"\nGD itr num: " << itr++;
+
 		// Interpolate TSDF Live Frame (EXAMPLE: HOW TO INTERPOLATE PHIn DEFORMED BY PSI)
 		interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 		
@@ -282,9 +286,10 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         }
 
         //multiply by weights
-        multiplyArrays(m_d_energyDu, m_d_energyDu, m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
-        multiplyArrays(m_d_energyDv, m_d_energyDv, m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
-        multiplyArrays(m_d_energyDw, m_d_energyDw, m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
+        interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        multiplyArrays(m_d_energyDu, m_d_energyDu, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
+        multiplyArrays(m_d_energyDv, m_d_energyDv, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
+        multiplyArrays(m_d_energyDw, m_d_energyDw, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
 
         // Update new state of the deformation field
         addArray(m_d_deformationFieldU, m_d_energyDu, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
@@ -297,12 +302,43 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         findAbsMax(&currentMaxVectorUpdate, m_d_magnitude, m_gridW, m_gridH, m_gridD);
 
         std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
-		itr = itr + 1;
 	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD && itr < m_maxIterations);
 	
 	// Update TSDF Global using a weighted averaging scheme
 	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-	addWeightedArray(m_d_tsdfGlobal, m_d_tsdfGlobalWeights, m_d_tsdfGlobal, m_d_tsdfLiveDeform, m_d_tsdfGlobalWeights, m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
+    interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+
+    addWeightedArray(m_d_tsdfGlobal, m_d_tsdfGlobalWeights, m_d_tsdfGlobal, m_d_tsdfLiveDeform, m_d_tsdfGlobalWeights, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
+
+    if (m_debugMode)
+    {
+        /*
+        //Test interpolation
+         //initialize the deformation to zero initially
+        float* deformationU = (float*)calloc(m_gridW * m_gridH * m_gridD, sizeof(float));
+        float* deformationV = (float*)calloc(m_gridW * m_gridH * m_gridD, sizeof(float));
+        float* deformationW = (float*)calloc(m_gridW * m_gridH * m_gridD, sizeof(float));
+
+        for (size_t i = 0; i < m_gridW * m_gridH * m_gridD; i++)
+        {
+            deformationU[i] = 20.7f;
+            deformationV[i] = -14.5f; 
+            deformationW[i] = 0.0f;   
+        }
+        cudaMemcpy(m_d_deformationFieldU, deformationU, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
+        cudaMemcpy(m_d_deformationFieldV, deformationV, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
+        cudaMemcpy(m_d_deformationFieldW, deformationW, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
+        interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+
+        */
+        plotSlice(m_d_tsdfLive, m_gridD / 2, "TSDF Live slice", 100, 100, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfGlobal, m_gridD / 2, "TSDF Global slice", 100 + 4*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfLiveDeform, m_gridD / 2, "Warped TSDF Live", 100 + 8*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfLiveWeights, m_gridD / 2, "Live weights", 100, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfGlobalWeights, m_gridD / 2, "Global weights", 100 + 4*m_gridW, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
+        
+        cv::waitKey(30);
+    }
 
 	delete interpTSDFLive;
 	delete interpTSDFDx;
@@ -314,177 +350,10 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	delete interpHessYY;
 	delete interpHessYZ;
 	delete interpHessZZ;
+    delete interpLiveWeights;
 }
-
 
 void Optimizer::optimizeTest(TSDFVolume* tsdfLive)
-{
-	// Initialize variables
-	float currentMaxVectorUpdate = 0.01;
-	float* tsdfLiveGrid = tsdfLive->ptrTsdf();
-	// Copy arrays from host to device
-	cudaMemcpy(m_d_tsdfLive, tsdfLiveGrid, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-
-	// Compute gradient of tsdfLive
-	computeGradient(m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_tsdfLive, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-
-	// Compute hessian of tsdfLive
-	computeHessian(m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ, m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-
-	// Create interpolators
-	Interpolator *interpTSDFLive = new Interpolator(m_d_tsdfLive, m_gridW, m_gridH, m_gridD);
-	Interpolator *interpTSDFDx = new Interpolator(m_d_sdfDx, m_gridW, m_gridH, m_gridD);
-	Interpolator *interpTSDFDy = new Interpolator(m_d_sdfDy, m_gridW, m_gridH, m_gridD);
-	Interpolator *interpTSDFDz = new Interpolator(m_d_sdfDz, m_gridW, m_gridH, m_gridD);
-	Interpolator *interpHessXX = new Interpolator(m_d_hessXX, m_gridW, m_gridH, m_gridD);
-	Interpolator *interpHessXY = new Interpolator(m_d_hessXY, m_gridW, m_gridH, m_gridD);
-	Interpolator *interpHessXZ = new Interpolator(m_d_hessXZ, m_gridW, m_gridH, m_gridD);
-	Interpolator *interpHessYY = new Interpolator(m_d_hessYY, m_gridW, m_gridH, m_gridD);
-	Interpolator *interpHessYZ = new Interpolator(m_d_hessYZ, m_gridW, m_gridH, m_gridD);
-	Interpolator *interpHessZZ = new Interpolator(m_d_hessZZ, m_gridW, m_gridH, m_gridD);
-	
-	/* IN ORDER TO COMPUTE ENERGIES: 	PSI is m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW
-										PHIglobal is m_d_tsdfGlobal			PHIn is m_d_tsdfLive
-										GRADIENT OF PHIn IS: m_d_sdfDx, m_d_sdfDy, m_d_sdfDz
-										HESSIAN OF PHIn IS: m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ
-	*/
-
-    std::cout<< "\\n Deforming SDF...\n";
-    int itr = 0;
-	do
-	{
-        std::cout<<"\nGD itr num: " << ++itr;
-		//interpolate TSDF Live Frame (EXAMPLE: HOW TO INTERPOLATE PHIn DEFORMED BY PSI)
-		interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-		
-        //interpolated the gradient of Phi_n wrt the psi
-        interpTSDFDx->interpolate3D(m_d_sdfDxDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        interpTSDFDy->interpolate3D(m_d_sdfDyDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        interpTSDFDz->interpolate3D(m_d_sdfDzDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        
-        //interpolate hessian wrt the psi
-        interpHessXX->interpolate3D(m_d_hessXXDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        interpHessXY->interpolate3D(m_d_hessXYDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        interpHessXZ->interpolate3D(m_d_hessXZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        interpHessYY->interpolate3D(m_d_hessYYDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        interpHessYZ->interpolate3D(m_d_hessYZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        interpHessZZ->interpolate3D(m_d_hessZZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-
-        //the following derivative functions adds to the m_d_energyDu/v/w, so ensure that they were zero intially
-        cudaMemset(m_d_energyDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
-        cudaMemset(m_d_energyDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
-        cudaMemset(m_d_energyDw, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
-        
-        //compute data term derivatives
-        computeDataTermDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
-                                  m_d_tsdfLiveDeform, m_d_tsdfGlobal,
-                                  m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
-                                  m_gridW, m_gridH, m_gridD);
-
-        float dataEnergy = 0.0;
-        computeDataEnergy(&dataEnergy, m_d_tsdfLiveDeform, m_d_tsdfGlobal, m_gridW, m_gridH, m_gridD);
-        std::cout<< "| Data Term Energy: " << dataEnergy;
-        
-        //add the derivatives from the levelSet Derivatives with a scalar constant wk
-        computeLevelSetDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
-                                  m_d_hessXXDeform, m_d_hessXYDeform, m_d_hessXZDeform,
-                                  m_d_hessYYDeform, m_d_hessYZDeform, m_d_hessZZDeform,
-                                  m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
-                                  m_ws,
-                                  m_gridW, m_gridH, m_gridD);
-        
-        float levelSetEnergy = 0.0;
-        computeLevelSetEnergy(&levelSetEnergy, m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_gridW, m_gridH, m_gridD);
-        std::cout<< "| Level Set Energy: " << levelSetEnergy;
-
-        //compute laplacians of the deformation field
-        computeLapacian(m_d_lapU, m_d_deformationFieldU, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-        computeLapacian(m_d_lapV, m_d_deformationFieldV, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-        computeLapacian(m_d_lapW, m_d_deformationFieldW, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-
-        //compute divergence and then the gradients of the divergence of deformation field
-        computeDivergence(m_d_div, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-        computeGradient(m_d_divX, m_d_divY, m_d_divZ, m_d_div, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-        
-        //TODO make gamma (the killing field weight) a member variable
-        float gamma = 0.1;
-        
-        //compute motion regularizer derivative
-        computeMotionRegularizerDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
-                                           m_d_lapU, m_d_lapV, m_d_lapW,
-                                           m_d_divX, m_d_divY, m_d_divZ,
-                                           m_wk, gamma,
-                                           m_gridW, m_gridH, m_gridD);
-
-        //find the energy of the Killing term. may be removed for normal runs
-        computeGradient(m_d_dux, m_d_duy, m_d_duz, m_d_deformationFieldU, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-        computeGradient(m_d_dvx, m_d_dvy, m_d_dvz, m_d_deformationFieldV, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-        computeGradient(m_d_dwx, m_d_dwy, m_d_dwz, m_d_deformationFieldW, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
-        float killingEnergy = 0.0;
-        computeKillingEnergy(&killingEnergy, gamma,
-                              m_d_dux, m_d_duy, m_d_duz,
-                              m_d_dvx, m_d_dvy, m_d_dvz,
-                              m_d_dwx, m_d_dwy, m_d_dwz,
-                              m_gridW, m_gridH, m_gridD);
-        std::cout<< "| Killing Energy: " << killingEnergy;
-
-        //update new state of the deformation field
-        addArray(m_d_deformationFieldU, m_d_energyDu, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
-        addArray(m_d_deformationFieldV, m_d_energyDv, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
-        addArray(m_d_deformationFieldW, m_d_energyDw, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
-
-        //calculate currentMaxVectorUpdate
-        /*float maxMagnitude;
-        maxU = maxV = maxW = 0.0;*/
-		currentMaxVectorUpdate = 0.0;
-		computeMagnitude(m_d_magnitude, m_d_energyDu, m_d_energyDv, m_d_energyDw, m_gridW, m_gridH, m_gridD);
-        findAbsMax(&currentMaxVectorUpdate, m_d_magnitude, m_gridW, m_gridH, m_gridD);
-        //findAbsMax(&maxV, m_d_energyDv, m_gridW, m_gridH, m_gridD);
-        //findAbsMax(&maxW, m_d_energyDw, m_gridW, m_gridH, m_gridD);
-
-        // //debug Code ---------------------------------------------------------
-
-        // float* test = (float*)calloc((m_gridW * m_gridH * m_gridD), sizeof(float));
-        // cudaMemcpy(test, m_d_energyDu, sizeof(float)*(m_gridW * m_gridH * m_gridD), cudaMemcpyDeviceToHost); CUDA_CHECK;
-        
-        // for(int r = 0; r<m_gridD; ++r)
-        // {
-            // //std::cout << "\n\nz = " << r;
-            // for(int q = 0; q<m_gridH; ++q)
-            // {
-                // //std::cout << "\n";
-                // for(int p = 0; p<m_gridW; ++p)
-                // {
-                    // int idx = p + q*m_gridW + r*m_gridW*m_gridH;
-                    // if(test[idx] > 0.0 || test[idx] < 0.0) std::cout << " " <<test[idx];
-                // }
-            // }
-        // }
-        
-        // delete[] test;
-        // //END of debug Code ---------------------------------------------------------
-        
-        // ///debug code --------------------------------------------
-        // float test1[] = {0.0000000001, 0.0000000002, 0.0000000003, -0.0000000004};
-        // float *d_test = NULL;
-        // cudaMalloc(&d_test, 2*2*sizeof(float)); CUDA_CHECK;
-        // cudaMemcpy(d_test, &test1, 2*2*sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-        // float maxTest = 0.0;
-        // findAbsMax(&maxTest, d_test, 2, 2, 1);
-        // std::cout<<"\nTest max was: "<< maxTest;
-        // cudaFree(d_test);
-        // ///[END]Debug code ---------------------------------------
-
-        /*if(maxU > maxV && maxU > maxW) currentMaxVectorUpdate = maxU;
-        else if(maxV> maxU && maxV>maxW) currentMaxVectorUpdate = maxV;
-        else currentMaxVectorUpdate = maxW;*/
-        std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
-		itr = itr + 1;
-	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD && itr < m_maxIterations);
-}
-
-
-void Optimizer::test(TSDFVolume* tsdfLive)
 {
 	// Initialize variables
 	float currentMaxVectorUpdate = 0.01;
@@ -548,11 +417,11 @@ void Optimizer::test(TSDFVolume* tsdfLive)
 	cv::minMaxLoc(m_tsdf, &min, &max);
 	std::cout << "Slice[ " << i << "]. Min: " << min << ". Max: " << max << std::endl;
 	}*/
-	getSlice(sliceTSDFDef, tsdfLiveGridDef, 128);
-	getSlice(sliceTSDF, tsdfLiveGrid, 128);
-	getSlice(sliceGradX, gradX, 128);
-	getSlice(sliceLapU, lapU, 128);
-	getSlice(sliceHessXX, hessXX, 128);
+	getSlice(sliceTSDFDef, tsdfLiveGridDef, 128, m_gridW, m_gridH);
+	getSlice(sliceTSDF, tsdfLiveGrid, 128, m_gridW, m_gridH);
+	getSlice(sliceGradX, gradX, 128, m_gridW, m_gridH);
+	getSlice(sliceLapU, lapU, 128, m_gridW, m_gridH);
+	getSlice(sliceHessXX, hessXX, 128, m_gridW, m_gridH);
 	convertLayeredToMat(m_tsdf, sliceTSDF);
 	convertLayeredToMat(m_grad_X, sliceGradX);
 	convertLayeredToMat(m_lapU, sliceLapU);
@@ -601,13 +470,6 @@ void Optimizer::test(TSDFVolume* tsdfLive)
 	} while (currentMaxVectorUpdate > MAX_VECTOR_UPDATE_THRESHOLD);
 }
 
-void Optimizer::getSlice(float* sliceOut, const float* gridIn, size_t sliceInd)
-{
-	for(int i = 0; i < m_gridW*m_gridH; i++)
-	{
-		sliceOut[i] = gridIn[i + (m_gridW*m_gridH) * sliceInd];
-	}
-}
 
 void Optimizer::computeGradient(float* gradOutX, float* gradOutY, float* gradOutZ, const float* gridIn, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d)
 {
