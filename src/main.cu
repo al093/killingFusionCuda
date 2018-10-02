@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
         "{n|iterations|100|max number of GD iterations}"
         "{a|alpha|0.1|Gradient Descent step size}"
         "{b|begin|0|First frame id to begin with}"
-        
+        "{d|debug|false|Debug mode}"        
     };
     cv::CommandLineParser cmd(argc, argv, params);
 
@@ -125,8 +125,12 @@ int main(int argc, char *argv[])
     std::cout << "Gradient Descent step: " << alpha << std::endl;
 
     // First frame id
-    size_t firstFrameId = (float)cmd.get<float>("begin");
+    size_t firstFrameId = (size_t)cmd.get<int>("begin");
     std::cout << "First frame of sequence: " << firstFrameId << std::endl;
+
+    // Debug mode
+    bool debugMode = (bool)cmd.get<bool>("debug");
+    std::cout << "Debug mode: " << debugMode << std::endl;
 
     // initialize cuda context
     cudaDeviceSynchronize(); CUDA_CHECK;
@@ -189,7 +193,11 @@ int main(int argc, char *argv[])
         cv::imshow("color", color);
         cv::imshow("depth", depth);
         cv::imshow("mask", mask);
-        //cv::waitKey();
+        if (debugMode)
+        {
+            cv::waitKey(30);
+        }
+        
 
         // get initial volume pose from centroid of first depth map
         if (i == firstFrameId)
@@ -201,7 +209,7 @@ int main(int argc, char *argv[])
             poseVolume.topRightCorner<3,1>() = transCentroid;
             std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
 			tsdfGlobal->integrate(poseVolume, color, depth);
-			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, iterations, gridW, gridH, gridD);
+			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, iterations, gridW, gridH, gridD, debugMode);
 
 			MarchingCubes mc(volDim, volSize);
     		mc.computeIsoSurface(tsdfGlobal->ptrTsdf(), tsdfGlobal->ptrTsdfWeights(), tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
@@ -222,22 +230,9 @@ int main(int argc, char *argv[])
 			// integrate frame into tsdf volume
         	tsdfLive->integrate(poseVolume, color, depth);
 
-            /*float max = -9999999, min=999999999;
-            for(int i = 0; i < 80*80*80; i++)
-            {
-                std::cout << "[" << i << "]: " << tsdfLive->ptrTsdfWeights()[i] << std::endl;
-                if (max < tsdfLive->ptrTsdfWeights()[i]) { max = tsdfLive->ptrTsdfWeights()[i];}
-                if (min > tsdfLive->ptrTsdfWeights()[i]) { min = tsdfLive->ptrTsdfWeights()[i];}
-            }
-            std::cout << "Max: " << max << std::endl;
-            std::cout << "Min: " << min << std::endl;*/
-
 			// TODO: perform optimization
 			optimizer->optimize(tsdfLive);
-			// TODO: update global model
-			
 		}
-        // integrate frame into tsdf volume
         delete tsdfLive;
     }
 

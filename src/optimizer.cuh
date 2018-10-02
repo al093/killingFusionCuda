@@ -19,7 +19,8 @@ class Optimizer
 {
 public:
 
-    Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha, const float wk, const float ws, const size_t maxIterations, const size_t gridW, const size_t gridH, const size_t gridD);
+    Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha,
+    		  const float wk, const float ws, const size_t maxIterations, const size_t gridW, const size_t gridH, const size_t gridD, const bool debugMode);
     ~Optimizer();
 
 	void getTSDFGlobalPtr(float* tsdfGlobalPtr);
@@ -47,6 +48,7 @@ protected:
 	float m_wk;
 	float m_ws;
 	size_t m_maxIterations;
+	bool m_debugMode;
 	const size_t m_gridW, m_gridH, m_gridD;
 
 	float* m_d_kernelDx = NULL;
