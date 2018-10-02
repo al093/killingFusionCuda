@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
     // create tsdf volume
     size_t gridW = 80, gridH = 80, gridD = 80;
 	float wk = 0.5, ws = 0.2;
-	float voxelSize = 0.004; 		// Voxel size in mm
+	float voxelSize = 0.004; 		// Voxel size in m
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(gridW*voxelSize, gridH*voxelSize, gridD*voxelSize);
     TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K);
