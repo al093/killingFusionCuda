@@ -122,6 +122,24 @@ void multiplyArraysKernel(float* arrayOut, const float* arrayIn1, const float* a
 
 }
 
+__global__
+void thresholdArrayKernel(float* arrayOut, const float* arrayIn, float threshold, const size_t width, const size_t height, const size_t depth)
+{
+    int x = threadIdx.x + blockIdx.x*blockDim.x;
+    int y = threadIdx.y + blockIdx.y*blockDim.y;
+    int z = threadIdx.z + blockIdx.z*blockDim.z;
+
+    if(x < width && y < height && z < depth)
+    {
+        size_t idx = x + y*width + z*width*height;
+        if (arrayIn[idx] < threshold)
+        {
+            arrayOut[idx] = 0.0f;
+        }
+    }
+
+}
+
 void computeDataTermDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW,
                                const float *d_phiNDeformed, const float *d_phiGlobal,
                                const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
@@ -184,7 +202,6 @@ void addWeightedArray(float* arrayOut, float* weightOut, const float* arrayIn1, 
     dim3 grid = computeGrid3D(blockSize, width, height, depth);
 
     addWeightedArrayKernel <<<grid, blockSize>>> (arrayOut, weightOut, arrayIn1, arrayIn2, weight1, weight2, width, height, depth);
-
 }
 
 void multiplyArrays(float* arrayOut, const float* arrayIn1, const float* arrayIn2, const size_t width, const size_t height, const size_t depth)
@@ -193,5 +210,12 @@ void multiplyArrays(float* arrayOut, const float* arrayIn1, const float* arrayIn
     dim3 grid = computeGrid3D(blockSize, width, height, depth);
 
     multiplyArraysKernel <<<grid, blockSize>>> (arrayOut, arrayIn1, arrayIn2, width, height, depth);
+}
 
+void thresholdArray(float* arrayOut, const float* arrayIn, const float threshold, const size_t width, const size_t height, const size_t depth)
+{
+    dim3 blockSize(32, 8, 1);
+    dim3 grid = computeGrid3D(blockSize, width, height, depth);
+
+    thresholdArrayKernel <<<grid, blockSize>>> (arrayOut, arrayIn, threshold, width, height, depth);
 }

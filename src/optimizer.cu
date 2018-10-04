@@ -299,6 +299,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         // Compute currentMaxVectorUpdate
 		currentMaxVectorUpdate = 0.0;
 		computeMagnitude(m_d_magnitude, m_d_energyDu, m_d_energyDv, m_d_energyDw, m_gridW, m_gridH, m_gridD);
+		thresholdArray(m_d_magnitude, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);  // TEST
         findAbsMax(&currentMaxVectorUpdate, m_d_magnitude, m_gridW, m_gridH, m_gridD);
 
         std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
@@ -329,7 +330,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         plotSlice(m_d_tsdfLiveWeights, m_gridD / 2, "Live weights", 100, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfGlobalWeights, m_gridD / 2, "Global weights", 100 + 4*m_gridW, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
         //plots the deformation for only one slice along the Z axis, so currently the W deformation fild is not used.
-        plotDeformation(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, 40, m_gridW, m_gridH, m_gridD);
+        plotDeformation(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLiveWeightsDeform, 40, m_gridW, m_gridH, m_gridD);
         cv::waitKey(0);
     }
 

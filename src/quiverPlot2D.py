@@ -1,6 +1,7 @@
 from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
+import matplotlib.colors as colors
 import matplotlib.cm as cm
 import numpy as np
 import sys
@@ -9,6 +10,7 @@ import sys
 fileU = './bin/result/u.txt'
 fileV = './bin/result/v.txt'
 fileW = './bin/result/w.txt'
+fileWeights = './bin/result/weights.txt'
 zSlice = 40
 dim = 80;
 
@@ -35,11 +37,24 @@ v = v.reshape((dim,dim))
 w = np.loadtxt(fileW)
 w = w.reshape((dim,dim))
 
+weights = np.loadtxt(fileWeights)
+#weights = weights.reshape((dim,dim))
+print(weights.shape)
 # Make the grid
 x, y = np.meshgrid(np.arange(0, dim, 1),
                       np.arange(dim , 0, -1))
 
+# Color
+occurrence = weights
+norm = colors.Normalize()
+norm.autoscale(occurrence)
+cm1 = cm.copper
+
+sm = cm.ScalarMappable(cmap=cm1, norm=norm)
+sm.set_array([])
+
 plt.figure()
 plt.title('deformation plot')
-q = plt.quiver(x, y, u, v, units='xy', scale=None, angles='xy', scale_units='xy')
+q = plt.quiver(x, y, u, v, units='xy', scale=None, angles='xy', scale_units='xy', color=cm1(norm(weights)))
+plt.colorbar(sm)
 plt.show()
