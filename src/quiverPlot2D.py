@@ -37,7 +37,7 @@ w = w.reshape((dim,dim))
 
 # Make the grid
 x, y = np.meshgrid(np.arange(0, dim, 1),
-                      np.arange(0, dim, 1))
+                      np.arange(dim , 0, -1))
 
 plt.figure()
 plt.title('deformation plot')
