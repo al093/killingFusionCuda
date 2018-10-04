@@ -239,7 +239,6 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
                                   m_ws,
                                   m_gridW, m_gridH, m_gridD);
 
-
         //compute laplacians of the deformation field
         computeLapacian(m_d_lapU, m_d_deformationFieldU, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
         computeLapacian(m_d_lapV, m_d_deformationFieldV, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
@@ -258,11 +257,78 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
                                            m_d_divX, m_d_divY, m_d_divZ,
                                            m_wk, gamma,
                                            m_gridW, m_gridH, m_gridD);
-
-             
-        // Compute all energy terms
         if (m_debugMode)
         {
+        	// Compute all energy derivatives split
+        	/*interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        	plotSlice(m_d_tsdfLiveDeform, m_gridD / 2, "TSDF Live slice", 100, 100, m_gridW, m_gridH, m_gridD);
+        	cv::waitKey(30);
+        	// Gradients
+        	plotVectorField(m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_d_tsdfLiveWeightsDeform, 40, 
+        				    "./bin/result/gradX.txt", "./bin/result/gradY.txt", "./bin/result/gradZ.txt", "./bin/result/weights.txt", "gradients",
+        					m_gridW, m_gridH, m_gridD);
+        	// Data energy derivative
+        	float* d_energyDatalDu = NULL, * d_energyDatalDv = NULL, * d_energyDatalDw = NULL;
+        	cudaMalloc(&d_energyDatalDu, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+			cudaMalloc(&d_energyDatalDv, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+			cudaMalloc(&d_energyDatalDw, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	cudaMemset(d_energyDatalDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	cudaMemset(d_energyDatalDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	cudaMemset(d_energyDatalDw, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	computeDataTermDerivative(d_energyDatalDu, d_energyDatalDv, d_energyDatalDw,
+                                  m_d_tsdfLiveDeform, m_d_tsdfGlobal,
+                                  m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
+                                  m_gridW, m_gridH, m_gridD);
+			plotVectorField(d_energyDatalDu, d_energyDatalDv, d_energyDatalDw, m_d_tsdfLiveWeightsDeform, 40, 
+        				    "./bin/result/dDataU.txt", "./bin/result/dDataV.txt", "./bin/result/dDataW.txt", "./bin/result/weights.txt", "d_data",
+        					m_gridW, m_gridH, m_gridD);
+
+        	cudaFree(d_energyDatalDu);
+        	cudaFree(d_energyDatalDv);
+        	cudaFree(d_energyDatalDw);    
+        	// Level set energy derivative
+        	float* d_energyLevelDu = NULL, * d_energyLevelDv = NULL, * d_energyLevelDw = NULL;
+        	cudaMalloc(&d_energyLevelDu, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+			cudaMalloc(&d_energyLevelDv, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+			cudaMalloc(&d_energyLevelDw, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	cudaMemset(d_energyLevelDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	cudaMemset(d_energyLevelDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	cudaMemset(d_energyLevelDw, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	computeLevelSetDerivative(d_energyLevelDu, d_energyLevelDv, d_energyLevelDw,
+                                  m_d_hessXXDeform, m_d_hessXYDeform, m_d_hessXZDeform,
+                                  m_d_hessYYDeform, m_d_hessYZDeform, m_d_hessZZDeform,
+                                  m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
+                                  m_ws,
+                                  m_gridW, m_gridH, m_gridD);
+        	plotVectorField(d_energyLevelDu, d_energyLevelDv, d_energyLevelDw, m_d_tsdfLiveWeightsDeform, 40, 
+        				    "./bin/result/dLevelU.txt", "./bin/result/dLevelV.txt", "./bin/result/dLevelW.txt", "./bin/result/weights.txt", "d_level",
+        					m_gridW, m_gridH, m_gridD);
+        	cudaFree(d_energyLevelDu);
+        	cudaFree(d_energyLevelDv);
+        	cudaFree(d_energyLevelDw);      
+        	// Killing energy derivative
+        	float* d_energyKillingDu = NULL, * d_energyKillingDv = NULL, * d_energyKillingDw = NULL;
+        	cudaMalloc(&d_energyKillingDu, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+			cudaMalloc(&d_energyKillingDv, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+			cudaMalloc(&d_energyKillingDw, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	cudaMemset(d_energyKillingDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	cudaMemset(d_energyKillingDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	cudaMemset(d_energyKillingDw, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+        	computeMotionRegularizerDerivative(d_energyKillingDu, d_energyKillingDv, d_energyKillingDw,
+                                           m_d_lapU, m_d_lapV, m_d_lapW,
+                                           m_d_divX, m_d_divY, m_d_divZ,
+                                           m_wk, gamma,
+                                           m_gridW, m_gridH, m_gridD);
+        	plotVectorField(d_energyKillingDu, d_energyKillingDv, d_energyKillingDw, m_d_tsdfLiveWeightsDeform, 40, 
+        				    "./bin/result/dKillingU.txt", "./bin/result/dKillingV.txt", "./bin/result/dKillingW.txt", "./bin/result/weights.txt", "d_killing",
+        					m_gridW, m_gridH, m_gridD);
+        	cudaFree(d_energyKillingDu);
+        	cudaFree(d_energyKillingDv);
+        	cudaFree(d_energyKillingDw);*/
+
+
+        	// Compute all energy terms
             float dataEnergy = 0.0;
             computeDataEnergy(&dataEnergy, m_d_tsdfLiveDeform, m_d_tsdfGlobal, m_gridW, m_gridH, m_gridD);
             std::cout<< "| Data Term Energy: " << dataEnergy;
@@ -299,7 +365,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         // Compute currentMaxVectorUpdate
 		currentMaxVectorUpdate = 0.0;
 		computeMagnitude(m_d_magnitude, m_d_energyDu, m_d_energyDv, m_d_energyDw, m_gridW, m_gridH, m_gridD);
-		thresholdArray(m_d_magnitude, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);  // TEST
+		//thresholdArray(m_d_magnitude, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);  // TEST
         findAbsMax(&currentMaxVectorUpdate, m_d_magnitude, m_gridW, m_gridH, m_gridD);
 
         std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
@@ -309,8 +375,8 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD && itr < m_maxIterations);
 	
 	// TEST
-	/*interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-    thresholdArray(m_d_deformationFieldU, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);
+	interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+    /*thresholdArray(m_d_deformationFieldU, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);
     thresholdArray(m_d_deformationFieldV, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);
     thresholdArray(m_d_deformationFieldW, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);*/
     // END-TEST
@@ -320,6 +386,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
     interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 
+    //thresholdArray(m_d_tsdfLiveDeform, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);
     addWeightedArray(m_d_tsdfGlobal, m_d_tsdfGlobalWeights, m_d_tsdfGlobal, m_d_tsdfLiveDeform, m_d_tsdfGlobalWeights, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
 
     if (m_debugMode)
@@ -330,8 +397,10 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         plotSlice(m_d_tsdfLiveWeights, m_gridD / 2, "Live weights", 100, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfGlobalWeights, m_gridD / 2, "Global weights", 100 + 4*m_gridW, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
         //plots the deformation for only one slice along the Z axis, so currently the W deformation fild is not used.
-        plotDeformation(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLiveWeightsDeform, 40, m_gridW, m_gridH, m_gridD);
-        cv::waitKey(0);
+        plotVectorField(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLiveWeightsDeform, 40, 
+        				"./bin/result/u.txt", "./bin/result/v.txt", "./bin/result/w.txt", "./bin/result/weights.txt", "deformation_field",
+        				m_gridW, m_gridH, m_gridD);
+        cv::waitKey(30);
     }
 
 	delete interpTSDFLive;

@@ -40,7 +40,9 @@ void plotSlice(const float* d_array, const size_t z, const std::string imageTitl
     delete[] h_array;
 }
 
-void plotDeformation(const float* d_u, const float* d_v, const float* d_w, const float* d_weights, const size_t sliceZval, const size_t width, const size_t height, const size_t depth)
+void plotVectorField(const float* d_u, const float* d_v, const float* d_w, const float* d_weights, const size_t sliceZval, 
+                     const std::string sFileU, const std::string sFileV, const std::string sFileW, const std::string sFileWeights,
+                     const std::string sPlotName, const size_t width, const size_t height, const size_t depth)
 {
     
     float* u = new float[width*height*depth];
@@ -54,10 +56,10 @@ void plotDeformation(const float* d_u, const float* d_v, const float* d_w, const
     cudaMemcpy(weights, d_weights, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 
     // save the u , v and w to disk (./bin/result)
-    std::ofstream outU("./bin/result/u.txt");
-    std::ofstream outV("./bin/result/v.txt");
-    std::ofstream outW("./bin/result/w.txt");
-    std::ofstream outWeights("./bin/result/weights.txt");
+    std::ofstream outU(sFileU);
+    std::ofstream outV(sFileV);
+    std::ofstream outW(sFileW);
+    std::ofstream outWeights(sFileWeights);
 
     //the storing should be done in such a way that python reshape can reshape it correctly
     for (size_t idx = sliceZval*width*height; idx<(sliceZval+1)*width*height; ++idx) {
@@ -80,7 +82,7 @@ void plotDeformation(const float* d_u, const float* d_v, const float* d_w, const
     //call python script to plot the quiver plot
     if(system(NULL))
     {
-        std::string command = "python ../src/quiverPlot2D.py";
+        std::string command = "python ../src/quiverPlot2D.py " + sFileU + " " + sFileV + " " + sFileW + " " + sFileWeights + " " + sPlotName;
         system(command.c_str());
     }
     else

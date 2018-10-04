@@ -7,10 +7,10 @@ import numpy as np
 import sys
 
 #default values
-fileU = './bin/result/u.txt'
-fileV = './bin/result/v.txt'
-fileW = './bin/result/w.txt'
-fileWeights = './bin/result/weights.txt'
+fileU = sys.argv[1]
+fileV = sys.argv[2]
+fileW = sys.argv[3]
+fileWeights = sys.argv[4]
 zSlice = 40
 dim = 80;
 
@@ -38,8 +38,6 @@ w = np.loadtxt(fileW)
 w = w.reshape((dim,dim))
 
 weights = np.loadtxt(fileWeights)
-#weights = weights.reshape((dim,dim))
-print(weights.shape)
 # Make the grid
 x, y = np.meshgrid(np.arange(0, dim, 1),
                       np.arange(dim , 0, -1))
@@ -54,7 +52,9 @@ sm = cm.ScalarMappable(cmap=cm1, norm=norm)
 sm.set_array([])
 
 plt.figure()
-plt.title('deformation plot')
-q = plt.quiver(x, y, u, v, units='xy', scale=None, angles='xy', scale_units='xy', color=cm1(norm(weights)))
+plt.title(sys.argv[5])
+q = plt.quiver(x, y, u, v, units='xy', scale=0.05, angles='xy', scale_units='xy', color=cm1(norm(weights)))
 plt.colorbar(sm)
+imageName = str(sys.argv[5].replace(".txt", "")) + ".jpg"
+plt.savefig(imageName)
 plt.show()
