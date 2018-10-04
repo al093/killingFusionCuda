@@ -203,7 +203,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	do
 	{
         std::cout<<"\nGD itr num: " << itr++;
-
+        
 		// Interpolate TSDF Live Frame (EXAMPLE: HOW TO INTERPOLATE PHIn DEFORMED BY PSI)
 		interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 		
@@ -286,10 +286,10 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         }
 
         //multiply by weights
-        interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        multiplyArrays(m_d_energyDu, m_d_energyDu, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
-        multiplyArrays(m_d_energyDv, m_d_energyDv, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
-        multiplyArrays(m_d_energyDw, m_d_energyDw, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
+        //interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        //multiplyArrays(m_d_energyDu, m_d_energyDu, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
+        //multiplyArrays(m_d_energyDv, m_d_energyDv, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
+        //multiplyArrays(m_d_energyDw, m_d_energyDw, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
 
         // Update new state of the deformation field
         addArray(m_d_deformationFieldU, m_d_energyDu, -1.0*m_alpha, m_gridW, m_gridH, m_gridD);
@@ -302,6 +302,9 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         findAbsMax(&currentMaxVectorUpdate, m_d_magnitude, m_gridW, m_gridH, m_gridD);
 
         std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
+        //if(m_debugMode) plotDeformation(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, 40, m_gridW, m_gridH, m_gridD);
+
+
 	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD && itr < m_maxIterations);
 	
 	// Update TSDF Global using a weighted averaging scheme
@@ -312,32 +315,14 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
     if (m_debugMode)
     {
-        /*
-        //Test interpolation
-         //initialize the deformation to zero initially
-        float* deformationU = (float*)calloc(m_gridW * m_gridH * m_gridD, sizeof(float));
-        float* deformationV = (float*)calloc(m_gridW * m_gridH * m_gridD, sizeof(float));
-        float* deformationW = (float*)calloc(m_gridW * m_gridH * m_gridD, sizeof(float));
-
-        for (size_t i = 0; i < m_gridW * m_gridH * m_gridD; i++)
-        {
-            deformationU[i] = 20.7f;
-            deformationV[i] = -14.5f; 
-            deformationW[i] = 0.0f;   
-        }
-        cudaMemcpy(m_d_deformationFieldU, deformationU, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-        cudaMemcpy(m_d_deformationFieldV, deformationV, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-        cudaMemcpy(m_d_deformationFieldW, deformationW, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
-        interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-
-        */
         plotSlice(m_d_tsdfLive, m_gridD / 2, "TSDF Live slice", 100, 100, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfGlobal, m_gridD / 2, "TSDF Global slice", 100 + 4*m_gridW, 100, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfLiveDeform, m_gridD / 2, "Warped TSDF Live", 100 + 8*m_gridW, 100, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfLiveWeights, m_gridD / 2, "Live weights", 100, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfGlobalWeights, m_gridD / 2, "Global weights", 100 + 4*m_gridW, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
-        
-        cv::waitKey(30);
+        //plots the deformation for only one slice along the Z axis, so currently the W deformation fild is not used.
+        plotDeformation(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, 40, m_gridW, m_gridH, m_gridD);
+        cv::waitKey(0);
     }
 
 	delete interpTSDFLive;

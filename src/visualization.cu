@@ -7,7 +7,9 @@
 #include <iostream>
 #include <cuda_runtime.h>
 #include "helper.cuh"
-
+#include <stdlib.h>
+#include <fstream>
+#include <string>
 
 void getSlice(float* sliceOut, const float* gridIn, const size_t sliceInd, const size_t w, const size_t h)
 {
@@ -33,4 +35,48 @@ void plotSlice(const float* d_array, const size_t z, const std::string imageTitl
     cv::minMaxLoc(matSlice, &min, &max);
     cv::resize(matSlice, matSlice, cv::Size(), 4, 4);
     showImage(imageTitle, (matSlice - min) / (max - min), posX, posY);
+
+    delete[] slice;
+    delete[] h_array;
+}
+
+void plotDeformation(const float* d_u, const float* d_v, const float* d_w, const size_t sliceZval, const size_t width, const size_t height, const size_t depth)
+{
+    
+    float* u = new float[width*height*depth];
+    float* v = new float[width*height*depth];
+    float* w = new float[width*height*depth];
+
+    cudaMemcpy(u, d_u, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+    cudaMemcpy(v, d_v, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+    cudaMemcpy(w, d_w, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+
+    // save the u , v and w to disk (./bin/result)
+    std::ofstream outU("./bin/result/u.txt");
+    std::ofstream outV("./bin/result/v.txt");
+    std::ofstream outW("./bin/result/w.txt");
+
+    //the storing should be done in such a way that python reshape can reshape it correctly
+        for (size_t idx = sliceZval*width*height; idx<(sliceZval+1)*width*height; ++idx) {
+            outU << u[idx] << " ";
+            outV << v[idx] << " ";
+            outW << w[idx] << " ";
+        }
+
+    outU.close();
+    outV.close();
+    outW.close();
+
+    delete[] u;
+    delete[] v;
+    delete[] w;
+
+    //call python script to plot the quiver plot
+    if(system(NULL))
+    {
+        std::string command = "python ../src/quiverPlot2D.py";
+        system(command.c_str());
+    }
+    else
+        std::cout<<"\nUnable to access the command prompt/ terminal. Will not be able to show deformation quiver plot";
 }
