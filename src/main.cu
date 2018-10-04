@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
         	tsdfLive->integrate(poseVolume, color, depth);
 
 			// TODO: perform optimization
-			optimizer->optimizeTest(tsdfLive);
+			optimizer->optimize(tsdfLive);
 		}
         delete tsdfLive;
     }
