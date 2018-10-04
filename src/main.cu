@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 
     // create tsdf volume
     size_t gridW = 80, gridH = 80, gridD = 80;
-	float wk = 0.5, ws = 0.2;
+	float wk = 0.8, ws = 0.2;
 	float voxelSize = 0.008; 		// Voxel size in m
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(gridW*voxelSize, gridH*voxelSize, gridD*voxelSize);
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
         	tsdfLive->integrate(poseVolume, color, depth);
 
 			// TODO: perform optimization
-			optimizer->optimize(tsdfLive);
+			optimizer->optimizeTest(tsdfLive);
 		}
         delete tsdfLive;
     }

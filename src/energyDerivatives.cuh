@@ -35,4 +35,6 @@ void addWeightedArray(float* arrayOut, float* weightOut, const float* arrayIn1, 
 void multiplyArrays(float* arrayOut, const float* arrayIn1, const float* arrayIn2,
             const size_t width, const size_t height, const size_t depth);
 
+void thresholdArray(float* arrayOut, const float* arrayIn, const float threshold,
+            const size_t width, const size_t height, const size_t depth);
 #endif

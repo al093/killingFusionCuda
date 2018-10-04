@@ -286,7 +286,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         }
 
         //multiply by weights
-        //interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         //multiplyArrays(m_d_energyDu, m_d_energyDu, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
         //multiplyArrays(m_d_energyDv, m_d_energyDv, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
         //multiplyArrays(m_d_energyDw, m_d_energyDw, m_d_tsdfLiveWeightsDeform, m_gridW, m_gridH, m_gridD);
@@ -307,6 +307,14 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
 	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD && itr < m_maxIterations);
 	
+	// TEST
+	/*interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+    thresholdArray(m_d_deformationFieldU, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);
+    thresholdArray(m_d_deformationFieldV, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);
+    thresholdArray(m_d_deformationFieldW, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);*/
+    // END-TEST
+
+
 	// Update TSDF Global using a weighted averaging scheme
 	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
     interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
