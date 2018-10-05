@@ -15,6 +15,6 @@ void computeConvolutionTextureMemCuda(float *imgOut, const float *imgIn, const f
 void computeConvolutionSharedMemCuda(float *imgOut, const float *imgIn, const float *kernel, int kradius, int w, int h, int nc);
 void computeConvolutionSharedConstantMemCuda(float *imgOut, const float *imgIn, const float *kernel, int kradius, int w, int h, int nc);
 void computeConvolutionGlobalMemCuda(float *imgOut, const float *imgIn, const float *kernel, int kradius, int w, int h, int c);
-void computeConvolution3D(float *gridOut, const float *gridIn, const float *kernel, int kradius, int w, int h, int d);
+void computeConvolution3D(float *gridOut, const float *gridIn, const float *kernel, int kradius, const size_t w, const size_t h, const size_t d);
 
 #endif
