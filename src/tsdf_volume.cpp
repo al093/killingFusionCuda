@@ -151,7 +151,7 @@ void TSDFVolume::integrate(const Mat4f &pose, const cv::Mat &color, const cv::Ma
 
                     // compute weight
                     float wTsdf = 0.0f;
-                    if (sdfVal <= -m_delta)
+                    if (sdfVal <= 0)//-m_delta)
                     {
                         wTsdf = 1.0f;
                     }
@@ -160,7 +160,8 @@ void TSDFVolume::integrate(const Mat4f &pose, const cv::Mat &color, const cv::Ma
                         // constant weighting function
                         //wTsdf = 1.0f;
                         // linear weighting function
-                        wTsdf = (tsdfVal + 1.0f) / 2.0f;
+//                        wTsdf = (tsdfVal + 1.0f) / 2.0f;
+                        wTsdf = 1.0f - tsdfVal;
 
                         // TODO normal based weighting
                     }
