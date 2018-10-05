@@ -4,12 +4,11 @@
 #include <opencv2/core/core.hpp>
 #include "mat.h"
 
-
 class TSDFVolume
 {
 public:
 
-    TSDFVolume(const Vec3i &dimensions, const Vec3f &size, const Mat3f &K);
+    TSDFVolume(const Vec3i &dimensions, const Vec3f &size, const Mat3f &K, size_t frameNumber);
     ~TSDFVolume();
 
     bool init();
@@ -35,6 +34,8 @@ public:
     bool load(const std::string &filename);
     bool save(const std::string &filename);
 
+    size_t getFrameNumber() {return frameNumber;}
+
     float truncate(float sdf) const;
 
     float interpolate3(float x, float y, float z) const;
@@ -58,6 +59,7 @@ protected:
     Vec3f m_size;
     Vec3f m_voxelSize;
 
+    size_t frameNumber;
     float* m_tsdf;
     float* m_weights;
     unsigned char* m_colorR;

@@ -40,49 +40,52 @@ void plotSlice(const float* d_array, const size_t z, const std::string imageTitl
     delete[] h_array;
 }
 
-void plotVectorField(const float* d_u, const float* d_v, const float* d_w, const float* d_weights, const size_t sliceZval, 
-                     const std::string sFileU, const std::string sFileV, const std::string sFileW, const std::string sFileWeights,
-                     const std::string sPlotName, const size_t width, const size_t height, const size_t depth)
+void plotVectorField(const float* d_u, const float* d_v, const float* d_w, const float* d_sdf, const size_t sliceZval,
+                     const std::string sFileU, const std::string sFileV, const std::string sFileW, const std::string sFileSdf,
+                     const std::string sPlotName, const int frameNumber,
+                     const size_t width, const size_t height, const size_t depth)
 {
     
     float* u = new float[width*height*depth];
     float* v = new float[width*height*depth];
     float* w = new float[width*height*depth];
-    float* weights = new float[width*height*depth];
+    float* sdf = new float[width*height*depth];
 
     cudaMemcpy(u, d_u, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
     cudaMemcpy(v, d_v, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
     cudaMemcpy(w, d_w, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-    cudaMemcpy(weights, d_weights, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+    cudaMemcpy(sdf, d_sdf, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 
     // save the u , v and w to disk (./bin/result)
     std::ofstream outU(sFileU);
     std::ofstream outV(sFileV);
     std::ofstream outW(sFileW);
-    std::ofstream outWeights(sFileWeights);
+    std::ofstream outSdf(sFileSdf);
 
     //the storing should be done in such a way that python reshape can reshape it correctly
     for (size_t idx = sliceZval*width*height; idx<(sliceZval+1)*width*height; ++idx) {
       outU << u[idx] << " ";
       outV << v[idx] << " ";
       outW << w[idx] << " ";
-      outWeights << weights[idx] << " ";
+      outSdf << sdf[idx] << " ";
     }
 
     outU.close();
     outV.close();
     outW.close();
-    outWeights.close();
+    outSdf.close();
 
     delete[] u;
     delete[] v;
     delete[] w;
-    delete[] weights;
+    delete[] sdf;
 
     //call python script to plot the quiver plot
     if(system(NULL))
     {
-        std::string command = "python ../src/quiverPlot2D.py " + sFileU + " " + sFileV + " " + sFileW + " " + sFileWeights + " " + sPlotName;
+        std::string command = "python ../src/quiverPlot2D.py " +
+                               sFileU + " " + sFileV + " " + sFileW + " " +
+                               sFileSdf + " " + sPlotName + " " + std::to_string(frameNumber);
         system(command.c_str());
     }
     else

@@ -7,7 +7,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 
-TSDFVolume::TSDFVolume(const Vec3i &dimensions, const Vec3f &size, const Mat3f &K) :
+TSDFVolume::TSDFVolume(const Vec3i &dimensions, const Vec3f &size, const Mat3f &K, size_t frameNumber) :
     m_dim(dimensions),
     m_gridSize(m_dim[0] * m_dim[1] * m_dim[2]),
     m_size(size),
@@ -20,7 +20,8 @@ TSDFVolume::TSDFVolume(const Vec3i &dimensions, const Vec3f &size, const Mat3f &
     m_weightsColor(0),
     m_delta(0.05f),
     m_deltaInv(1.0f / m_delta),
-    m_K(K)
+    m_K(K),
+    frameNumber(frameNumber)
 {
     init();
 }

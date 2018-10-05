@@ -369,18 +369,13 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         findAbsMax(&currentMaxVectorUpdate, m_d_magnitude, m_gridW, m_gridH, m_gridD);
 
         std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
-        //if(m_debugMode) plotDeformation(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, 40, m_gridW, m_gridH, m_gridD);
 
+//        if(m_debugMode)
+//            plotVectorField(m_d_energyDu, m_d_energyDv, m_d_energyDw, m_d_tsdfLive, 40,
+//                            "./bin/result/u.txt", "./bin/result/v.txt", "./bin/result/w.txt", "./bin/result/weights.txt", "dt_deformation_field", itr,
+//                            m_gridW, m_gridH, m_gridD);
 
 	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD && itr < m_maxIterations);
-	
-	// TEST
-	interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-    /*thresholdArray(m_d_deformationFieldU, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);
-    thresholdArray(m_d_deformationFieldV, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);
-    thresholdArray(m_d_deformationFieldW, m_d_tsdfLiveWeightsDeform, 0.5, m_gridW, m_gridH, m_gridD);*/
-    // END-TEST
-
 
 	// Update TSDF Global using a weighted averaging scheme
 	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
@@ -397,9 +392,9 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         plotSlice(m_d_tsdfLiveWeights, m_gridD / 2, "Live weights", 100, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfGlobalWeights, m_gridD / 2, "Global weights", 100 + 4*m_gridW, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
         //plots the deformation for only one slice along the Z axis, so currently the W deformation fild is not used.
-        plotVectorField(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLiveWeightsDeform, 40, 
-        				"./bin/result/u.txt", "./bin/result/v.txt", "./bin/result/w.txt", "./bin/result/weights.txt", "deformation_field",
-        				m_gridW, m_gridH, m_gridD);
+        plotVectorField(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLive, 40,
+                        "./bin/result/u.txt", "./bin/result/v.txt", "./bin/result/w.txt", "./bin/result/weights.txt", "deformation_field",
+                        tsdfLive->getFrameNumber(), m_gridW, m_gridH, m_gridD);
         cv::waitKey(30);
     }
 

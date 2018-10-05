@@ -97,7 +97,9 @@ int main(int argc, char *argv[])
         "{n|iterations|100|max number of GD iterations}"
         "{a|alpha|0.1|Gradient Descent step size}"
         "{b|begin|0|First frame id to begin with}"
-        "{d|debug|false|Debug mode}"        
+        "{d|debug|false|Debug mode}"
+        "{wk|wk|0.5|Killing term weight}"
+        "{ws|ws|0.1|Level set weight}"
     };
     cv::CommandLineParser cmd(argc, argv, params);
 
@@ -132,6 +134,14 @@ int main(int argc, char *argv[])
     bool debugMode = (bool)cmd.get<bool>("debug");
     std::cout << "Debug mode: " << debugMode << std::endl;
 
+    // Killing term weight
+    float wk = (float)cmd.get<float>("wk");
+    std::cout << "w_k: " << wk << std::endl;
+
+    // Level Set term weight
+    float ws = (float)cmd.get<float>("ws");
+    std::cout << "w_s: " << ws << std::endl;
+
     // initialize cuda context
     cudaDeviceSynchronize(); CUDA_CHECK;
 
@@ -146,11 +156,10 @@ int main(int argc, char *argv[])
 
     // create tsdf volume
     size_t gridW = 80, gridH = 80, gridD = 80;
-	float wk = 0.5, ws = 0.1;
 	float voxelSize = 0.008; 		// Voxel size in m
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(gridW*voxelSize, gridH*voxelSize, gridD*voxelSize);
-    TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K);
+    TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K, 0);
     TSDFVolume* tsdfLive;
     //initialize the deformation to zero initially
     float* deformationU = (float*)calloc(gridW*gridH*gridD, sizeof(float));
@@ -176,7 +185,7 @@ int main(int argc, char *argv[])
     cv::Mat color, depth, mask;
     for (size_t i = firstFrameId; i < frames; ++i)
     {
-        tsdfLive = new TSDFVolume(volDim, volSize, K);
+        tsdfLive = new TSDFVolume(volDim, volSize, K, i);
         std::cout << std::endl << " Loading Frame: " << i << std::endl;
 
         // load input frame
