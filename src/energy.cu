@@ -65,7 +65,21 @@ void computeKillingEnergyKernel(float *d_killingEnergyArray, const float gamma,
     }
 }
 
+__global__
+void computeMaskKernel(bool *d_mask, const float *d_phiN,
+                 const size_t width, const size_t height, const size_t depth)
+{
+    int x = threadIdx.x + blockIdx.x*blockDim.x;
+    int y = threadIdx.y + blockIdx.y*blockDim.y;
+    int z = threadIdx.z + blockIdx.z*blockDim.z;
 
+    if(x<width && y<height && z<depth)
+    {
+        size_t idx = x + y*width + z*width*height;
+        if(d_phiN[idx] < 1.0 && d_phiN[idx] > -1.0 )
+            d_mask[idx] = true;
+    }
+}
 
 void computeDataEnergy(float *dataEnergy, const float *d_phiNDeformed, const float *d_phiGlobal,
                        const size_t width, const size_t height, const size_t depth)
@@ -150,4 +164,15 @@ void computeKillingEnergy(float *killingEnergy, const float gamma,
     //free cuda memory and cublas handle
     cublasDestroy(handle);
     cudaFree(d_killingEnergyArray);
+}
+
+void computeMask(bool *d_mask, const float *d_phiN,
+                 const size_t width, const size_t height, const size_t depth)
+{
+    dim3 blockSize(32, 8, 1);
+    dim3 grid = computeGrid3D(blockSize, width, height, depth);
+
+    computeMaskKernel <<<grid, blockSize>>> (d_mask, d_phiN, width, height, depth);
+
+    CUDA_CHECK;
 }

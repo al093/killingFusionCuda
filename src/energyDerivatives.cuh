@@ -17,7 +17,7 @@ void computeLevelSetDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEda
                                const float *d_hessPhiXX, const float *d_hessPhiXY, const float *d_hessPhiXZ,
                                const float *d_hessPhiYY, const float *d_hessPhiYZ, const float *d_hessPhiZZ,
                                const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
-                               const float ws,
+                               const bool *d_mask, const float ws,
                                const size_t width, const size_t height, const size_t depth);
 
 void computeMotionRegularizerDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW,

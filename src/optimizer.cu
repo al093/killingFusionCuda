@@ -108,6 +108,10 @@ void Optimizer::allocateMemoryInDevice()
 	// Allocate magnitude grid
 	cudaMalloc(&m_d_magnitude, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 
+    // Allocate for mask - only near surface regions deformation is to be calculated.
+    cudaMalloc(&m_d_mask, (m_gridW * m_gridH * m_gridD) * sizeof(bool)); CUDA_CHECK;
+    cudaMemset(m_d_mask, 0, (m_gridW * m_gridH * m_gridD) * sizeof(bool)); CUDA_CHECK;
+
     // Allocate and initialize to zero the memory for the gradients of energy
     cudaMalloc(&m_d_energyDu, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
     cudaMalloc(&m_d_energyDv, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -188,12 +192,16 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	cudaMemcpy(m_d_tsdfLiveWeights, tsdfLiveWeights, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 
 	// Compute gradient of tsdfLive
-	
     timer.start();
 	computeGradient(m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_tsdfLive, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
 	timer.end();
     m_timeComputeGradient += timer.get();
     m_nComputeGradient += 1;
+
+
+    // Compute the mask for this tsdfLive
+
+
 	// Compute hessian of tsdfLive
 	timer.start();
 	computeHessian(m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ, m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_kernelDx, m_d_kernelDy, m_d_kernelDz, 1, m_gridW, m_gridH, m_gridD);
@@ -220,12 +228,11 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 										HESSIAN OF PHIn IS: m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ
 	*/
 
-    if (m_debugMode)
-    {
-        std::cout<< "Deforming SDF..." << std::endl;
-    }
+    if (m_debugMode) std::cout<< "Deforming SDF..." << std::endl;
+
     int itr = 0;
-	do
+
+    do
 	{
         std::cout << "GD itr num: " << itr++ << std::endl;
         
@@ -266,7 +273,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
                                   m_d_hessXXDeform, m_d_hessXYDeform, m_d_hessXZDeform,
                                   m_d_hessYYDeform, m_d_hessYZDeform, m_d_hessZZDeform,
                                   m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
-                                  m_ws,
+                                  m_d_mask, m_ws,
                                   m_gridW, m_gridH, m_gridD);
 		timer.end();
         m_timeComputeLevelSetDerivative += timer.get();
@@ -300,6 +307,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         timer.end();
         m_timeComputeGradient += timer.get();
     	m_nComputeGradient += 1;
+
         //TODO make gamma (the killing field weight) a member variable
         float gamma = 0.1;
         

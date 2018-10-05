@@ -90,12 +90,6 @@ protected:
 	float* m_d_hessYZ = NULL;
 	float* m_d_hessZZ = NULL;
 
-	/*float* m_d_dvx = NULL;
-	float* m_d_dvy = NULL;
-	float* m_d_dvz = NULL;
-	float* m_d_dwx = NULL;
-	float* m_d_dwy = NULL;
-	float* m_d_dwz = NULL;*/
 	float* m_d_du = NULL;
 	float* m_d_dv = NULL;
 	float* m_d_dw = NULL;
@@ -126,5 +120,7 @@ protected:
 
 	// Magnitude
     float* m_d_magnitude = NULL;
+
+    bool* m_d_mask = NULL;
 };
 
