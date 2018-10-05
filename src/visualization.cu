@@ -11,25 +11,67 @@
 #include <fstream>
 #include <string>
 
-void getSlice(float* sliceOut, const float* gridIn, const size_t sliceInd, const size_t w, const size_t h)
+void getSlice(float* sliceOut, const float* gridIn, const size_t sliceInd, const size_t dim, const size_t w, const size_t h, const size_t d)
 {
-  for(int i = 0; i < w*h; i++)
-  {
-    sliceOut[i] = gridIn[i + (w*h) * sliceInd];
-  }
+    // X dimension
+    if (dim == 0)
+    {
+        for(size_t j = 0; j < h; j++)
+        {
+            for (size_t k = 0; k < d; k++)
+            {
+               sliceOut[j + k * h] = gridIn[sliceInd + j * w + k * h*w]; 
+            }
+        }
+    }
+    // Y dimension
+    else if (dim == 1)
+    {
+        
+        for(size_t i = 0; i < w; i++)
+        {
+            for (size_t k = 0; k < d; k++)
+            {
+                sliceOut[i + k * w] = gridIn[i + sliceInd * w + k * h*w];
+            }
+        }
+    }
+    // Z dimension
+    else
+    {
+        for(int i = 0; i < w*h; i++)
+        {
+            sliceOut[i] = gridIn[i + (w*h) * sliceInd];
+        }
+    }
 }
 
-void plotSlice(const float* d_array, const size_t z, const std::string imageTitle, const size_t posX, const size_t posY, const size_t w, const size_t h, const size_t d)
+
+void plotSlice(const float* d_array, const size_t sliceInd, const size_t dim, const std::string imageTitle, const size_t posX, const size_t posY, const size_t w, const size_t h, const size_t d)
 {
+    
+    size_t matH, matW;
+    if (dim == 0)
+    {
+        matH = h;
+        matW = d;
+    }
+    else if (dim == 1)
+    {
+        matH = w;
+        matW = d;
+    }
+    else
+    {
+        matH = h;
+        matW = w;
+    }
     float* h_array = new float[h * w * d];
-    float* slice = new float[h * w];
+    float* slice = new float[matH * matW];
     cudaMemcpy(h_array, d_array, (h * w * d) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-   /* int sizes[] = {(int) w, (int) h, (int) d};
-    cv::Mat mat3D(3, sizes, CV_32FC1, cv::Scalar(0));*/
-    cv::Mat matSlice(h, w, CV_32F);
-    getSlice(slice, h_array, z, w, h);
+    cv::Mat matSlice(matH, matW, CV_32F);
+    getSlice(slice, h_array, sliceInd, dim, w, h, d);
     convertLayeredToMat(matSlice, slice);
-    //getSliceFromMat(mat3D, z, matSlice);
     // Normalize the slice
     double min, max;
     cv::minMaxLoc(matSlice, &min, &max);
