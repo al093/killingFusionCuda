@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
 		}
         delete tsdfLive;
     }
-
+    optimizer->printTimes();
     // extract mesh using marching cubes
     std::cout << "Extracting mesh..." << std::endl;
 	float* tsdfGlobalAccumulated = (float*)calloc(gridW*gridH*gridD, sizeof(float));
