@@ -25,6 +25,7 @@ public:
 
 	void getTSDFGlobalPtr(float* tsdfGlobalPtr);
 	void getTSDFGlobalWeightsPtr(float* tsdfGlobalWeightsPtr);
+	void printTimes();
 
 	void optimize(TSDFVolume* tsdfLive);
 	void optimizeTest(TSDFVolume* tsdfLive);
@@ -50,6 +51,15 @@ protected:
 	bool m_debugMode;
 	const size_t m_gridW, m_gridH, m_gridD;
 
+	// Timing variables
+	float m_timeComputeGradient = 0.0f, m_timeComputeHessian = 0.0f, m_timeComputeLaplacian = 0.0f, m_timeComputeDivergence = 0.0f,
+		   m_timeComputeDataTermDerivative = 0.0f, m_timeComputeLevelSetDerivative = 0.0f, m_timeComputeMotionRegularizerDerivative = 0.0f,
+		   m_timeAddArray = 0.0f, m_timeComputeMagnitude = 0.0f, m_timeFindAbsMax = 0.0f, m_timeAddWeightedArray = 0.0f;
+	size_t m_nComputeGradient = 0, m_nComputeHessian = 0, m_nComputeLaplacian = 0, m_nComputeDivergence = 0,
+		   m_nComputeDataTermDerivative = 0, m_nComputeLevelSetDerivative = 0, m_nComputeMotionRegularizerDerivative = 0,
+		   m_nAddArray = 0, m_nComputeMagnitude = 0, m_nFindAbsMax = 0, m_nAddWeightedArray = 0;
+
+	// Kernel variables
 	float* m_d_kernelDx = NULL;
 	float* m_d_kernelDy = NULL;
 	float* m_d_kernelDz = NULL;

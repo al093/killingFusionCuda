@@ -91,6 +91,7 @@ CUDA_ADD_EXECUTABLE(${APP_NAME}
         src/tsdf_volume.h src/tsdf_volume.cpp
         src/dataset.h src/dataset.cpp
         src/helper.cuh src/helper.cu
+        src/gradient.cuh src/gradient.cu
         src/convolution.cuh src/convolution.cu
         src/divergence.cuh src/divergence.cu
 		src/magnitude.cuh src/magnitude.cu

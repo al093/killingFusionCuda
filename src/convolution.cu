@@ -177,12 +177,12 @@ void computeConvolutionGlobalMemKernel(float *imgOut, const float *imgIn, const 
 }
 
 __global__
-void computeConvolution3DGlobalMemKernel(float* gridOut, const float* gridIn, const float* kernel, int kradius, int w, int h, int d)
+void computeConvolution3DGlobalMemKernel(float* gridOut, const float* gridIn, const float* kernel, int kradius, const size_t w, const size_t h, const size_t d)
 {
     // compute convolution using global memory
-    int x = threadIdx.x +  (size_t) blockDim.x * blockIdx.x;
-	int y = threadIdx.y +  (size_t) blockDim.y * blockIdx.y;
-	int z = threadIdx.z +  (size_t) blockDim.z * blockIdx.z;
+    size_t x = threadIdx.x +  (size_t) blockDim.x * blockIdx.x;
+	size_t y = threadIdx.y +  (size_t) blockDim.y * blockIdx.y;
+	size_t z = threadIdx.z +  (size_t) blockDim.z * blockIdx.z;
 	if (x < w && y < h && z < d)
 	{
 		int l = 2*kradius + 1;
@@ -196,9 +196,9 @@ void computeConvolution3DGlobalMemKernel(float* gridOut, const float* gridIn, co
 				for (int k = 0; k < l; k++)
 				{
 					// Check boundary conditions
-					size_t xCoord = min(max(x + i - kradius, 0), w - 1);
-					size_t yCoord = min(max(y + j - kradius, 0), h - 1);
-					size_t zCoord = min(max(z + k - kradius, 0), d - 1);
+					size_t xCoord = min(max(x + i - kradius, (size_t) 0), w - 1);
+					size_t yCoord = min(max(y + j - kradius, (size_t) 0), h - 1);
+					size_t zCoord = min(max(z + k - kradius, (size_t) 0), d - 1);
 					size_t indVoxelShift = xCoord + (size_t)w*yCoord + sliceSize*zCoord;
 					size_t indKernel = i + (size_t)l*j + (size_t)l*l*k;
 					sumVoxels = sumVoxels + gridIn[indVoxelShift] * kernel[indKernel];
@@ -375,7 +375,7 @@ void computeConvolutionGlobalMemCuda(float *imgOut, const float *imgIn, const fl
 	CUDA_CHECK;
 }
 
-void computeConvolution3D(float *gridOut, const float *gridIn, const float* kernel, int kradius, int w, int h, int d)
+void computeConvolution3D(float *gridOut, const float *gridIn, const float* kernel, int kradius, const size_t w, const size_t h, const size_t d)
 {
     if (!gridOut || !gridIn)
     {
