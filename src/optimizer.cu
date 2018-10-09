@@ -514,7 +514,8 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         plotSlice(m_d_tsdfLiveWeights, m_gridD / 2, 2, "Live weights", 100, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfGlobalWeights, m_gridD / 2, 2, "Global weights", 100 + 4*m_gridW, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfLive, 50, 1, "Live TSDF Y", 100, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
-        plotSlice(m_d_tsdfLive, m_gridW / 2 + 5, 0, "Live TSDF X", 100, 100 + 12*m_gridH, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfLive, m_gridW / 2, 0, "Live TSDF X", 100 + 8*m_gridW, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfLiveDeform, m_gridW / 2, 0, "LiveDeform TSDF X", 100 + 4*m_gridW, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
         //plots the deformation for only one slice along the Z axis, so currently the W deformation fild is not used.
 
         plotVectorField(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLive, 40,
