@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
     for (size_t i = firstFrameId; i < frames; ++i)
     {
         tsdfLive = new TSDFVolume(volDim, volSize, K, i);
-        std::cout << std::endl << " Loading Frame: " << i << std::endl;
+        std::cout << std::endl << "\nWorking on frame: " << i;
 
         // load input frame
         if (!loadFrame(inputSequence, i, color, depth, mask))
