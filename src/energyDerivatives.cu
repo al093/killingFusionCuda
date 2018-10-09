@@ -110,10 +110,17 @@ void addWeightedArrayKernel(float* arrayOut, float* weightOut, const float* arra
 
     if(x < width && y < height && z < depth)
     {
-      size_t idx = x + y*width + z*width*height;
-      float sumWeights = max(weight1[idx] + weight2[idx], 0.00001f);
-          arrayOut[idx] = (weight1[idx]*arrayIn1[idx] + weight2[idx]*arrayIn2[idx]) / sumWeights;
-      weightOut[idx] = sumWeights;
+        size_t idx = x + y*width + z*width*height;
+        float sumWeights = weight1[idx] + weight2[idx];
+        if (arrayIn1[idx] == -1 && arrayIn2[idx] == -1)
+        {
+            arrayOut[idx] = -1;
+        }
+        else
+        {
+            arrayOut[idx] = (weight1[idx]*arrayIn1[idx] + weight2[idx]*arrayIn2[idx]) / sumWeights;
+        }
+        weightOut[idx] = sumWeights;
     }
 
 }
