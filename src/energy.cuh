@@ -20,4 +20,7 @@ void computeKillingEnergy(float *killingEnergy, const float gamma,
                           const float* d_dwx, const float* d_dwy, const float* d_dwz,
                           const size_t width, const size_t height, const size_t depth);
 
+void computeMask(bool *d_mask, const float *d_phiN,
+                 const size_t width, const size_t height, const size_t depth);
+
 #endif
