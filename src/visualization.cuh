@@ -9,9 +9,9 @@
 
 #include <iostream>
 
-void getSlice(float* sliceOut, const float* gridIn, const size_t sliceInd, const size_t w, const size_t h);
+void getSlice(float* sliceOut, const float* gridIn, const size_t sliceInd, const size_t dim, const size_t w, const size_t h, const size_t d);
 
-void plotSlice(const float* d_array, const size_t z, const std::string imageTitle, const size_t posX, const size_t posY, const size_t w, const size_t h, const size_t d);
+void plotSlice(const float* d_array, const size_t sliceInd, const size_t dim, const std::string imageTitle, const size_t posX, const size_t posY, const size_t w, const size_t h, const size_t d);
 
 void plotVectorField(const float* d_u, const float* d_v, const float* d_w,
                      const float* d_sdf, const size_t sliceZval,

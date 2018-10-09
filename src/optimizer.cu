@@ -15,12 +15,13 @@
 #include "reduction.cuh"
 #include "magnitude.cuh"
 #include "visualization.cuh"
+#include "marching_cubes.h"
 
 #include <opencv2/highgui/highgui.hpp>
 
 Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, 
-                     const float alpha, const float wk, const float ws, const size_t maxIterations, const size_t gridW, 
-                     const size_t gridH, const size_t gridD, const bool debugMode) :
+                     const float alpha, const float wk, const float ws, const size_t maxIterations, const float voxelSize,
+                     const bool debugMode, const size_t gridW, const size_t gridH, const size_t gridD) :
 	m_tsdfGlobal(tsdfGlobal),
     m_deformationFieldU(initialDeformationU),
     m_deformationFieldV(initialDeformationV),
@@ -29,11 +30,13 @@ Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* 
 	m_wk(wk),
 	m_ws(ws),
 	m_maxIterations(maxIterations),
+	m_voxelSize(voxelSize),
+	m_debugMode(debugMode),
 	m_gridW(gridW), 
 	m_gridH(gridH),
-	m_gridD(gridD),
-    m_debugMode(debugMode)
+	m_gridD(gridD)
 {
+	m_maxVectorUpdateThreshold = 0.1 / (m_voxelSize * 1000.0);
     allocateMemoryInDevice();
 	copyArraysToDevice();
 }
@@ -228,9 +231,11 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 										HESSIAN OF PHIn IS: m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ
 	*/
 
-    if (m_debugMode) std::cout<< "Deforming SDF..." << std::endl;
-
-    int itr = 0;
+    if (m_debugMode)
+    {
+        std::cout<< "Deforming SDF..." << std::endl;
+    }
+    size_t itr = 0;
 
     do
 	{
@@ -327,10 +332,10 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         	// Compute all energy derivatives split
         	/*interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        	plotSlice(m_d_tsdfLiveDeform, m_gridD / 2, "TSDF Live slice", 100, 100, m_gridW, m_gridH, m_gridD);
-        	plotSlice(m_d_sdfDxDeform, m_gridD / 2, "Gradient X", 100+4*m_gridW, 100, m_gridW, m_gridH, m_gridD);
-        	plotSlice(m_d_sdfDyDeform, m_gridD / 2, "Gradient Y", 100+8*m_gridW, 100, m_gridW, m_gridH, m_gridD);
-        	plotSlice(m_d_sdfDzDeform, m_gridD / 2, "Gradient Z", 100+12*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+        	plotSlice(m_d_tsdfLiveDeform, m_gridD / 2, 2, "TSDF Live slice", 100, 100, m_gridW, m_gridH, m_gridD);
+        	plotSlice(m_d_sdfDxDeform, m_gridD / 2, 2, "Gradient X", 100+4*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+        	plotSlice(m_d_sdfDyDeform, m_gridD / 2, 2, "Gradient Y", 100+8*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+        	plotSlice(m_d_sdfDzDeform, m_gridD / 2, 2, "Gradient Z", 100+12*m_gridW, 100, m_gridW, m_gridH, m_gridD);
         	cv::waitKey(0);
         	// Gradients
         	plotVectorField(m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_d_tsdfLiveWeightsDeform, 40, 
@@ -458,7 +463,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
         std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
 
-	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD && itr < m_maxIterations);
+	} while ((m_alpha * currentMaxVectorUpdate) > m_maxVectorUpdateThreshold && itr < m_maxIterations);
 
 	// Update TSDF Global using a weighted averaging scheme
 	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
@@ -471,13 +476,55 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
     m_timeAddWeightedArray += timer.get();
     m_nAddWeightedArray += 1;
 
+//this will store the deformed mesh and the original mesh for every frame
+
+    if(m_debugMode)
+    {
+        Vec3i volDim(m_gridW, m_gridH, m_gridD);
+        Vec3f volSize(m_gridW*m_voxelSize, m_gridH*m_voxelSize, m_gridD*m_voxelSize);
+
+        MarchingCubes mc(volDim, volSize);
+        float* sdf = (float*)calloc(m_gridW*m_gridH*m_gridD, sizeof(float));
+        float* sdfWeights = (float*)calloc(m_gridW*m_gridH*m_gridD, sizeof(float));
+
+
+        cudaMemcpy(sdf, m_d_tsdfLiveDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+
+        cudaMemcpy(sdfWeights, m_d_tsdfLiveWeightsDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+
+
+        mc.computeIsoSurface(sdf, sdfWeights, tsdfLive->ptrColorR(), tsdfLive->ptrColorG(), tsdfLive->ptrColorB());
+
+        std::string meshFilename = "./bin/result/mesh_warped_" + std::to_string(tsdfLive->getFrameNumber()) + ".ply";
+
+        if (!mc.savePly(meshFilename))
+        {
+            std::cerr << "Could not save mesh!" << std::endl;
+        }
+
+        cudaMemcpy(sdf, m_d_tsdfLive, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+        cudaMemcpy(sdfWeights, m_d_tsdfLiveWeights, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+
+        mc.computeIsoSurface(sdf, sdfWeights, tsdfLive->ptrColorR(), tsdfLive->ptrColorG(), tsdfLive->ptrColorB());
+        meshFilename = "./bin/result/mesh_original_" + std::to_string(tsdfLive->getFrameNumber()) + ".ply";
+        if (!mc.savePly(meshFilename))
+        {
+            std::cerr << "Could not save mesh!" << std::endl;
+        }
+
+        delete[] sdf;
+        delete[] sdfWeights;
+    }
+
     if (m_debugMode)
     {
-        plotSlice(m_d_tsdfLive, m_gridD / 2, "TSDF Live slice", 100, 100, m_gridW, m_gridH, m_gridD);
-        plotSlice(m_d_tsdfGlobal, m_gridD / 2, "TSDF Global slice", 100 + 4*m_gridW, 100, m_gridW, m_gridH, m_gridD);
-        plotSlice(m_d_tsdfLiveDeform, m_gridD / 2, "Warped TSDF Live", 100 + 8*m_gridW, 100, m_gridW, m_gridH, m_gridD);
-        plotSlice(m_d_tsdfLiveWeights, m_gridD / 2, "Live weights", 100, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
-        plotSlice(m_d_tsdfGlobalWeights, m_gridD / 2, "Global weights", 100 + 4*m_gridW, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfLive, m_gridD / 2, 2, "TSDF Live slice", 100, 100, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfGlobal, m_gridD / 2, 2, "TSDF Global slice", 100 + 4*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfLiveDeform, m_gridD / 2, 2, "Warped TSDF Live", 100 + 8*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfLiveWeights, m_gridD / 2, 2, "Live weights", 100, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfGlobalWeights, m_gridD / 2, 2, "Global weights", 100 + 4*m_gridW, 100 + 4*m_gridH, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfLive, 50, 1, "Live TSDF Y", 100, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
+        plotSlice(m_d_tsdfLive, m_gridW / 2 + 5, 0, "Live TSDF X", 100, 100 + 12*m_gridH, m_gridW, m_gridH, m_gridD);
         //plots the deformation for only one slice along the Z axis, so currently the W deformation fild is not used.
 
         plotVectorField(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLive, 40,
@@ -564,11 +611,11 @@ void Optimizer::optimizeTest(TSDFVolume* tsdfLive)
 	cv::minMaxLoc(m_tsdf, &min, &max);
 	std::cout << "Slice[ " << i << "]. Min: " << min << ". Max: " << max << std::endl;
 	}*/
-	getSlice(sliceTSDFDef, tsdfLiveGridDef, 128, m_gridW, m_gridH);
-	getSlice(sliceTSDF, tsdfLiveGrid, 128, m_gridW, m_gridH);
-	getSlice(sliceGradX, gradX, 128, m_gridW, m_gridH);
-	getSlice(sliceLapU, lapU, 128, m_gridW, m_gridH);
-	getSlice(sliceHessXX, hessXX, 128, m_gridW, m_gridH);
+	getSlice(sliceTSDFDef, tsdfLiveGridDef, 128, 2, m_gridW, m_gridH, m_gridD);
+	getSlice(sliceTSDF, tsdfLiveGrid, 128, 2, m_gridW, m_gridH, m_gridD);
+	getSlice(sliceGradX, gradX, 128, 2, m_gridW, m_gridH, m_gridD);
+	getSlice(sliceLapU, lapU, 128, 2, m_gridW, m_gridH, m_gridD);
+	getSlice(sliceHessXX, hessXX, 128, 2, m_gridW, m_gridH, m_gridD);
 	convertLayeredToMat(m_tsdf, sliceTSDF);
 	convertLayeredToMat(m_grad_X, sliceGradX);
 	convertLayeredToMat(m_lapU, sliceLapU);
@@ -614,7 +661,7 @@ void Optimizer::optimizeTest(TSDFVolume* tsdfLive)
 
 		// TODO: update new state of the deformation field
 
-	} while (currentMaxVectorUpdate > MAX_VECTOR_UPDATE_THRESHOLD);
+	} while (currentMaxVectorUpdate > m_maxVectorUpdateThreshold);
 }
 
 

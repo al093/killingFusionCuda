@@ -3,8 +3,6 @@
 #include "tsdf_volume.h"
 
 
-
-const float MAX_VECTOR_UPDATE_THRESHOLD = 0.1 / 8.0; // Threshold: 0.1mm -> (/ 4mm per voxel, / alpha)
 const float m_kernelDxCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -20,7 +18,7 @@ class Optimizer
 public:
 
     Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha,
-    		  const float wk, const float ws, const size_t maxIterations, const size_t gridW, const size_t gridH, const size_t gridD, const bool debugMode);
+    		  const float wk, const float ws, const size_t maxIterations, const float voxelSize, const bool debugMode, const size_t gridW, const size_t gridH, const size_t gridD);
     ~Optimizer();
 
 	void getTSDFGlobalPtr(float* tsdfGlobalPtr);
@@ -44,12 +42,14 @@ protected:
     float* m_d_tsdfGlobal = NULL, * m_d_tsdfLive = NULL, * m_d_tsdfGlobalWeights = NULL, * m_d_tsdfLiveWeights = NULL;
     float* m_deformationFieldU, * m_deformationFieldV, * m_deformationFieldW;
 	float* m_d_deformationFieldU, * m_d_deformationFieldV, * m_d_deformationFieldW;
-    float m_alpha;
-	float m_wk;
-	float m_ws;
-	size_t m_maxIterations;
-	bool m_debugMode;
+    const float m_alpha;
+	const float m_wk;
+	const float m_ws;
+	const size_t m_maxIterations;
+	const bool m_debugMode;
 	const size_t m_gridW, m_gridH, m_gridD;
+	const float m_voxelSize;
+	float m_maxVectorUpdateThreshold; 			// Threshold: 0.1mm
 
 	// Timing variables
 	float m_timeComputeGradient = 0.0f, m_timeComputeHessian = 0.0f, m_timeComputeLaplacian = 0.0f, m_timeComputeDivergence = 0.0f,

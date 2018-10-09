@@ -1,0 +1,13 @@
+Mean running times (ms): 
+- computeGradient: 6.06705 (1090 iterations)
+- computeHessian: 12.8498 (9 iterations)
+- computeLaplacian: 11.468 (3243 iterations)
+- computeDivergence: 6.76833 (1081 iterations)
+- computeDataTermDeritavie: 1.85364 (1081 iterations)
+- computeLevelSetDerivative: 8.34743 (1081 iterations)
+- computeMotionRegularizerDerivatie: 2.07473 (1081 iterations)
+- addArray: 1.67561 (3243 iterations)
+- computeMagnitude: 1.66825 (1081 iterations)
+- findAbsMax: 2.30848 (1081 iterations)
+- addWeightedArray: 2.09478 (9 iterations)
+
