@@ -50,7 +50,7 @@ sm.set_array([])
 
 plt.figure()
 plt.title(figureName)
-q = plt.quiver(x, y, u, -v, units='xy', scale=.25, angles='xy', scale_units='xy', color=cm1(norm(sdf)))
+q = plt.quiver(x, y, u, -v, units='xy', scale=1, angles='xy', scale_units='xy', color=cm1(norm(sdf)))
 plt.colorbar(sm)
 
 resultsDir = "./bin/result/"

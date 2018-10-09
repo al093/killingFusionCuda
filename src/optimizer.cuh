@@ -3,8 +3,6 @@
 #include "tsdf_volume.h"
 
 
-
-const float MAX_VECTOR_UPDATE_THRESHOLD = 0.1 / 6.0; // Threshold: 0.1mm -> (/ 4mm per voxel, / alpha)
 const float m_kernelDxCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
 									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -51,6 +49,7 @@ protected:
 	const bool m_debugMode;
 	const size_t m_gridW, m_gridH, m_gridD;
 	const float m_voxelSize;
+	float m_maxVectorUpdateThreshold; 			// Threshold: 0.1mm
 
 	// Timing variables
 	float m_timeComputeGradient = 0.0f, m_timeComputeHessian = 0.0f, m_timeComputeLaplacian = 0.0f, m_timeComputeDivergence = 0.0f,

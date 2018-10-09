@@ -36,6 +36,7 @@ Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* 
 	m_gridH(gridH),
 	m_gridD(gridD)
 {
+	m_maxVectorUpdateThreshold = 0.1 / (m_voxelSize * 1000.0);
     allocateMemoryInDevice();
 	copyArraysToDevice();
 }
@@ -226,7 +227,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
     {
         std::cout<< "Deforming SDF..." << std::endl;
     }
-    int itr = 0;
+    size_t itr = 0;
 	do
 	{
         std::cout << "GD itr num: " << itr++ << std::endl;
@@ -452,7 +453,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
         std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
 
-	} while ((m_alpha * currentMaxVectorUpdate) > MAX_VECTOR_UPDATE_THRESHOLD && itr < m_maxIterations);
+	} while ((m_alpha * currentMaxVectorUpdate) > m_maxVectorUpdateThreshold && itr < m_maxIterations);
 
 	// Update TSDF Global using a weighted averaging scheme
 	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
@@ -650,7 +651,7 @@ void Optimizer::optimizeTest(TSDFVolume* tsdfLive)
 
 		// TODO: update new state of the deformation field
 
-	} while (currentMaxVectorUpdate > MAX_VECTOR_UPDATE_THRESHOLD);
+	} while (currentMaxVectorUpdate > m_maxVectorUpdateThreshold);
 }
 
 
