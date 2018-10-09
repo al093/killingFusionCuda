@@ -118,7 +118,11 @@ protected:
     float* m_d_energyDv = NULL;
     float* m_d_energyDw = NULL;
 
-	// Magnitude
+    float* m_d_dfx = NULL;
+    float* m_d_dfy = NULL;
+    float* m_d_dfz = NULL;
+
+    // Magnitude
     float* m_d_magnitude = NULL;
 
     bool* m_d_mask = NULL;

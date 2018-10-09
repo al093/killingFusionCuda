@@ -18,10 +18,10 @@ TSDFVolume::TSDFVolume(const Vec3i &dimensions, const Vec3f &size, const Mat3f &
     m_colorG(0),
     m_colorB(0),
     m_weightsColor(0),
-    m_delta(0.05f),
+    m_delta(0.08f),
     m_deltaInv(1.0f / m_delta),
     m_K(K),
-    frameNumber(frameNumber)
+    m_frameNumber(frameNumber)
 {
     init();
 }

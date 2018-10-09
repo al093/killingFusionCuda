@@ -34,7 +34,7 @@ public:
     bool load(const std::string &filename);
     bool save(const std::string &filename);
 
-    size_t getFrameNumber() {return frameNumber;}
+    size_t getFrameNumber() {return m_frameNumber;}
 
     float truncate(float sdf) const;
 
@@ -59,7 +59,7 @@ protected:
     Vec3f m_size;
     Vec3f m_voxelSize;
 
-    size_t frameNumber;
+    size_t m_frameNumber;
     float* m_tsdf;
     float* m_weights;
     unsigned char* m_colorR;
