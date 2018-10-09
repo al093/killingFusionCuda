@@ -15,12 +15,13 @@
 #include "reduction.cuh"
 #include "magnitude.cuh"
 #include "visualization.cuh"
+#include "marching_cubes.h"
 
 #include <opencv2/highgui/highgui.hpp>
 
 Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, 
-                     const float alpha, const float wk, const float ws, const size_t maxIterations, const size_t gridW, 
-                     const size_t gridH, const size_t gridD, const bool debugMode) :
+                     const float alpha, const float wk, const float ws, const size_t maxIterations, const float voxelSize,
+                     const bool debugMode, const size_t gridW, const size_t gridH, const size_t gridD) :
 	m_tsdfGlobal(tsdfGlobal),
     m_deformationFieldU(initialDeformationU),
     m_deformationFieldV(initialDeformationV),
@@ -29,10 +30,11 @@ Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* 
 	m_wk(wk),
 	m_ws(ws),
 	m_maxIterations(maxIterations),
+	m_voxelSize(voxelSize),
+	m_debugMode(debugMode),
 	m_gridW(gridW), 
 	m_gridH(gridH),
-	m_gridD(gridD),
-    m_debugMode(debugMode)
+	m_gridD(gridD)
 {
     allocateMemoryInDevice();
 	copyArraysToDevice();
@@ -462,6 +464,46 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
     timer.end();
     m_timeAddWeightedArray += timer.get();
     m_nAddWeightedArray += 1;
+
+//this will store the deformed mesh and the original mesh for every frame
+
+    if(m_debugMode)
+    {
+        Vec3i volDim(m_gridW, m_gridH, m_gridD);
+        Vec3f volSize(m_gridW*m_voxelSize, m_gridH*m_voxelSize, m_gridD*m_voxelSize);
+
+        MarchingCubes mc(volDim, volSize);
+        float* sdf = (float*)calloc(m_gridW*m_gridH*m_gridD, sizeof(float));
+        float* sdfWeights = (float*)calloc(m_gridW*m_gridH*m_gridD, sizeof(float));
+
+
+        cudaMemcpy(sdf, m_d_tsdfLiveDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+
+        cudaMemcpy(sdfWeights, m_d_tsdfLiveWeightsDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+
+
+        mc.computeIsoSurface(sdf, sdfWeights, tsdfLive->ptrColorR(), tsdfLive->ptrColorG(), tsdfLive->ptrColorB());
+
+        std::string meshFilename = "./bin/result/mesh_warped_" + std::to_string(tsdfLive->getFrameNumber()) + ".ply";
+
+        if (!mc.savePly(meshFilename))
+        {
+            std::cerr << "Could not save mesh!" << std::endl;
+        }
+
+        cudaMemcpy(sdf, m_d_tsdfLive, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+        cudaMemcpy(sdfWeights, m_d_tsdfLiveWeights, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+
+        mc.computeIsoSurface(sdf, sdfWeights, tsdfLive->ptrColorR(), tsdfLive->ptrColorG(), tsdfLive->ptrColorB());
+        meshFilename = "./bin/result/mesh_original_" + std::to_string(tsdfLive->getFrameNumber()) + ".ply";
+        if (!mc.savePly(meshFilename))
+        {
+            std::cerr << "Could not save mesh!" << std::endl;
+        }
+
+        delete[] sdf;
+        delete[] sdfWeights;
+    }
 
     if (m_debugMode)
     {

@@ -218,11 +218,11 @@ int main(int argc, char *argv[])
             poseVolume.topRightCorner<3,1>() = transCentroid;
             std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
 			tsdfGlobal->integrate(poseVolume, color, depth);
-			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, iterations, gridW, gridH, gridD, debugMode);
+			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, iterations, voxelSize, debugMode, gridW, gridH, gridD);
 
 			MarchingCubes mc(volDim, volSize);
     		mc.computeIsoSurface(tsdfGlobal->ptrTsdf(), tsdfGlobal->ptrTsdfWeights(), tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
-			const std::string meshFilename = inputSequence + "/mesh.ply";
+			const std::string meshFilename = "./bin/result/mesh_canonical.ply";
 			if (!mc.savePly(meshFilename))
 			{
 				std::cerr << "Could not save mesh!" << std::endl;
@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 	mcAcc.computeIsoSurface(tsdfGlobalAccumulated, tsdfGlobalWeightsAccumulated, tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
     // save mesh
     std::cout << "Saving mesh..." << std::endl;
-	const std::string meshAccFilename = inputSequence + "/meshAcc.ply";
+	const std::string meshAccFilename = "./bin/result/mesh_acc.ply";
 	if (!mcAcc.savePly(meshAccFilename))
     {
         std::cerr << "Could not save accumulated mesh!" << std::endl;
