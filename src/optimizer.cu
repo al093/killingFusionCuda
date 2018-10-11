@@ -118,7 +118,7 @@ void Optimizer::allocateMemoryInDevice()
 
     // Allocate for mask - only near surface regions deformation is to be calculated.
     cudaMalloc(&m_d_mask, (m_gridW * m_gridH * m_gridD) * sizeof(bool)); CUDA_CHECK;
-    cudaMemset(m_d_mask, 0, (m_gridW * m_gridH * m_gridD) * sizeof(bool)); CUDA_CHECK;
+    cudaMemset(m_d_mask, true, (m_gridW * m_gridH * m_gridD) * sizeof(bool)); CUDA_CHECK;
 
     // Allocate and initialize to zero the memory for the gradients of energy
     cudaMalloc(&m_d_energyDu, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;

@@ -39,9 +39,7 @@ protected:
 	void computeHessian(float* hessOutXX, float* hessOutXY, float* hessOutXZ, float* hessOutYY, float* hessOutYZ, float* hessOutZZ, const float* gradX, const float* gradY, const float* gradZ, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d);
 
     TSDFVolume* m_tsdfGlobal;
-    float* m_d_tsdfGlobal = NULL, * m_d_tsdfLive = NULL, * m_d_tsdfGlobalWeights = NULL, * m_d_tsdfLiveWeights = NULL;
-    float* m_deformationFieldU, * m_deformationFieldV, * m_deformationFieldW;
-	float* m_d_deformationFieldU, * m_d_deformationFieldV, * m_d_deformationFieldW;
+    
     const float m_alpha;
 	const float m_wk;
 	const float m_ws;
@@ -59,22 +57,40 @@ protected:
 		   m_nComputeDataTermDerivative = 0, m_nComputeLevelSetDerivative = 0, m_nComputeMotionRegularizerDerivative = 0,
 		   m_nAddArray = 0, m_nComputeMagnitude = 0, m_nFindAbsMax = 0, m_nAddWeightedArray = 0;
 
-	// Kernel variables
+
+
+	// Gradients of deformation field
+    //TODO these variables may not be needed during normal runtimes, only needed for debugging
+    //but the laplacian function uses m_d_dux/y/z as temp variables!!
+
+    // TSDFs and weights
+	float* m_d_tsdfGlobal = NULL;
+	float* m_d_tsdfLive = NULL;
+	float* m_d_tsdfGlobalWeights = NULL;
+	float* m_d_tsdfLiveWeights = NULL;
+
+	// Deformation field
+	float* m_deformationFieldU;
+	float* m_deformationFieldV;
+	float* m_deformationFieldW;
+	float* m_d_deformationFieldU;
+	float* m_d_deformationFieldV;
+	float* m_d_deformationFieldW;
+
+	// Kernels
 	float* m_d_kernelDx = NULL;
 	float* m_d_kernelDy = NULL;
 	float* m_d_kernelDz = NULL;
+
 	// Gradients of live SDF
 	float* m_d_sdfDx = NULL;
 	float* m_d_sdfDy = NULL;
 	float* m_d_sdfDz = NULL;
 
-	// Gradients of deformation field
-    //TODO these variables may not be needed during normal runtimes, only needed for debugging
-    //but the laplacian function uses m_d_dux/y/z as temp variables!!
+	// Deformation field gradients
 	float* m_d_dux = NULL;
 	float* m_d_duy = NULL;
 	float* m_d_duz = NULL;
-
     float* m_d_dvx = NULL;
     float* m_d_dvy = NULL;
     float* m_d_dvz = NULL;
@@ -90,13 +106,13 @@ protected:
 	float* m_d_hessYZ = NULL;
 	float* m_d_hessZZ = NULL;
 
-	float* m_d_du = NULL;
-	float* m_d_dv = NULL;
-	float* m_d_dw = NULL;
+	// Divergence
 	float* m_d_div = NULL;
     float* m_d_divX = NULL;
     float* m_d_divY = NULL;
     float* m_d_divZ = NULL;
+
+	// Laplacian
 	float* m_d_lapU = NULL;
     float* m_d_lapV = NULL;
     float* m_d_lapW = NULL;
@@ -113,18 +129,24 @@ protected:
 	float* m_d_hessYZDeform = NULL;
 	float* m_d_hessZZDeform = NULL;
 	float* m_d_tsdfLiveWeightsDeform = NULL;
-    
+
+	// Magnitude grid
+	float* m_d_magnitude = NULL;
+
+    // Mask - only near surface regions deformation is to be calculated.
+    bool* m_d_mask = NULL;
+
+    // Gradients of energy
     float* m_d_energyDu = NULL;
     float* m_d_energyDv = NULL;
     float* m_d_energyDw = NULL;
 
+    // Gradients used by to compute the divergence function
+	float* m_d_du = NULL;
+	float* m_d_dv = NULL;
+	float* m_d_dw = NULL;
     float* m_d_dfx = NULL;
     float* m_d_dfy = NULL;
     float* m_d_dfz = NULL;
-
-    // Magnitude
-    float* m_d_magnitude = NULL;
-
-    bool* m_d_mask = NULL;
 };
 
