@@ -18,7 +18,8 @@ class Optimizer
 public:
 
     Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha,
-    		  const float wk, const float ws, const size_t maxIterations, const float voxelSize, const bool debugMode, const size_t gridW, const size_t gridH, const size_t gridD);
+    		  const float wk, const float ws, const size_t maxIterations, const float voxelSize, const bool debugMode,
+    		  const size_t gridW, const size_t gridH, const size_t gridD);
     ~Optimizer();
 
 	void getTSDFGlobalPtr(float* tsdfGlobalPtr);
@@ -70,12 +71,12 @@ protected:
 	float* m_d_tsdfLiveWeights = NULL;
 
 	// Deformation field
-	float* m_deformationFieldU;
-	float* m_deformationFieldV;
-	float* m_deformationFieldW;
-	float* m_d_deformationFieldU;
-	float* m_d_deformationFieldV;
-	float* m_d_deformationFieldW;
+	float* m_deformationFieldU = NULL;
+	float* m_deformationFieldV = NULL;
+	float* m_deformationFieldW = NULL;
+	float* m_d_deformationFieldU = NULL;
+	float* m_d_deformationFieldV = NULL;
+	float* m_d_deformationFieldW = NULL;
 
 	// Kernels
 	float* m_d_kernelDx = NULL;

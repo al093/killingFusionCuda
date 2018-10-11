@@ -11,7 +11,7 @@
 __global__
 void computeDataTermDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW, 
                                     const float *d_phiNDeformed, const float *d_phiGlobal,
-                                    const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ, const bool *d_mask,
+                                    const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
                                     const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
@@ -22,14 +22,11 @@ void computeDataTermDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *
     {
         size_t idx = x + y*width + z*width*height;
 
-        if(d_mask[idx])
-        {
-            float scalar = (d_phiNDeformed[idx] - d_phiGlobal[idx]);
+        float scalar = (d_phiNDeformed[idx] - d_phiGlobal[idx]);
 
-            d_dEdataU[idx] += scalar*d_gradPhiNDeformedX[idx];
-            d_dEdataV[idx] += scalar*d_gradPhiNDeformedY[idx];
-            d_dEdataW[idx] += scalar*d_gradPhiNDeformedZ[idx];
-        }
+        d_dEdataU[idx] += scalar*d_gradPhiNDeformedX[idx];
+        d_dEdataV[idx] += scalar*d_gradPhiNDeformedY[idx];
+        d_dEdataW[idx] += scalar*d_gradPhiNDeformedZ[idx];
     }
 }
 
@@ -49,12 +46,12 @@ void computeLevelSetDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *
     {
         size_t idx = x + y*width + z*width*height;
 
-        if(d_mask[idx])
+        //if(d_mask[idx])
         {
-            float gradNorm = d_gradPhiNDeformedX[idx]*d_gradPhiNDeformedX[idx] + d_gradPhiNDeformedY[idx]*d_gradPhiNDeformedY[idx] + d_gradPhiNDeformedZ[idx]*d_gradPhiNDeformedZ[idx];
-            gradNorm = sqrtf(gradNorm);
+            float gradNorm = pow(d_gradPhiNDeformedX[idx], 2) + pow(d_gradPhiNDeformedY[idx], 2) + pow(d_gradPhiNDeformedZ[idx], 2);
+            gradNorm = sqrt(gradNorm);
 
-            float scalar = ws*(gradNorm - 1.0)/(gradNorm + 0.00001);
+            float scalar = ws*(gradNorm - 1.0)/(gradNorm+0.00001);
 
             d_dEdataU[idx] += scalar*(d_hessPhiXX[idx]*d_gradPhiNDeformedX[idx] + d_hessPhiXY[idx]*d_gradPhiNDeformedY[idx] + d_hessPhiXZ[idx]*d_gradPhiNDeformedZ[idx]);
             d_dEdataV[idx] += scalar*(d_hessPhiXY[idx]*d_gradPhiNDeformedX[idx] + d_hessPhiYY[idx]*d_gradPhiNDeformedY[idx] + d_hessPhiYZ[idx]*d_gradPhiNDeformedZ[idx]);
@@ -67,7 +64,7 @@ __global__
 void computeMotionRegularizerDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW,
                                               const float *d_lapU, const float *d_lapV, const float *d_lapW,
                                               const float *d_divX, const float *d_divY, const float *d_divZ,
-                                              const bool *d_mask, const float wk, const float gamma,
+                                              const float wk, const float gamma,
                                               const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
@@ -77,13 +74,9 @@ void computeMotionRegularizerDerivativeKernel(float *d_dEdataU, float *d_dEdataV
     if(x<width && y<height && z<depth)
     {
         size_t idx = x + y*width + z*width*height;
-
-        if(d_mask[idx])
-        {
-            d_dEdataU[idx] -= 2.0*wk*(d_lapU[idx] + gamma*d_divX[idx]);
-            d_dEdataV[idx] -= 2.0*wk*(d_lapV[idx] + gamma*d_divY[idx]);
-            d_dEdataW[idx] -= 2.0*wk*(d_lapW[idx] + gamma*d_divZ[idx]);
-        }
+        d_dEdataU[idx] += -2.0*wk*d_lapU[idx] -2.0*wk*gamma*d_divX[idx];
+        d_dEdataV[idx] += -2.0*wk*d_lapV[idx] -2.0*wk*gamma*d_divY[idx];
+        d_dEdataW[idx] += -2.0*wk*d_lapW[idx] -2.0*wk*gamma*d_divZ[idx];
     }
 }
 
@@ -161,7 +154,6 @@ void thresholdArrayKernel(float* arrayOut, const float* arrayIn, float threshold
 void computeDataTermDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW,
                                const float *d_phiNDeformed, const float *d_phiGlobal,
                                const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
-                               const bool* d_mask,
                                const size_t width, const size_t height, const size_t depth)
 {
     dim3 blockSize(32, 8, 1);
@@ -170,7 +162,6 @@ void computeDataTermDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEda
     computeDataTermDerivativeKernel <<<grid, blockSize>>> (d_dEdataU, d_dEdataV, d_dEdataW, 
                                                      d_phiNDeformed, d_phiGlobal,
                                                      d_gradPhiNDeformedX, d_gradPhiNDeformedY, d_gradPhiNDeformedZ,
-                                                     d_mask,
                                                      width, height, depth);
 }
 
@@ -195,7 +186,7 @@ void computeLevelSetDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEda
 void computeMotionRegularizerDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEdataW,
                                         const float *d_lapU, const float *d_lapV, const float *d_lapW,
                                         const float *d_divX, const float *d_divY, const float *d_divZ,
-                                        const bool* d_mask, const float ws, const float gamma,
+                                        const float ws, const float gamma,
                                         const size_t width, const size_t height, const size_t depth)
 {
     dim3 blockSize(32, 8, 1);
@@ -204,7 +195,7 @@ void computeMotionRegularizerDerivative(float *d_dEdataU, float *d_dEdataV, floa
     computeMotionRegularizerDerivativeKernel <<<grid, blockSize>>> (d_dEdataU, d_dEdataV, d_dEdataW,
                                                                     d_lapU, d_lapV, d_lapW,
                                                                     d_divX, d_divY, d_divZ,
-                                                                    d_mask, ws, gamma,
+                                                                    ws, gamma,
                                                                     width, height, depth);
 }
 
