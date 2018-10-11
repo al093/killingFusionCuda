@@ -24,7 +24,7 @@ void computeDivergenceKernel(float *divOut, const float *dx, const float *dy, co
 	}
 }
 
-void computeDivergence3DCuda(float *divOut, const float *dx, const float *dy, const float *dz, const size_t w, const size_t h, const size_t d)
+void computeDivergence3D(float *divOut, const float *dx, const float *dy, const float *dz, const size_t w, const size_t h, const size_t d)
 {
     // calculate block and grid size
     dim3 block(32, 8, 1);

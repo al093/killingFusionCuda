@@ -23,8 +23,9 @@ protected:
 	void allocateMemoryInDevice();
 	void copyArraysToDevice();
 	void computeGradient(float* gradOutX, float* gradOutY, float* gradOutZ, const float* gridIn, int w, int h, int d);
-	void computeDivergence(float* divOut, const float* gridInU, const float* gridInV, const float* gridInW, int w, int h, int d);
-	void computeLapacian(float* lapOut, const float* deformationIn, int w, int h, int d);
+	void computeDivergence(float* divOut, const float* gridInDu, const float* gridInDV, const float* gridInDW, int w, int h, int d);
+	void sumGradients(float* divOut, const float* duxIn, const float* dvyIn, const float* dwzIn, int w, int h, int d);
+	void computeLapacian(float* lapOut, float* dOut, const size_t dOutComponent, const float* deformationIn, int w, int h, int d);
 	void computeHessian(float* hessOutXX, float* hessOutXY, float* hessOutXZ, float* hessOutYY, float* hessOutYZ, float* hessOutZZ, const float* gradX, const float* gradY, const float* gradZ, int w, int h, int d);
 
     TSDFVolume* m_tsdfGlobal;

@@ -350,29 +350,31 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         m_timeComputeLevelSetDerivative += timer.get();
     	m_nComputeLevelSetDerivative += 1;
 
-        //compute laplacians of the deformation field
+        // Compute laplacians of the deformation field
         timer.start();
-        computeLapacian(m_d_lapU, m_d_deformationFieldU, m_gridW, m_gridH, m_gridD);
+        computeLapacian(m_d_lapU, m_d_dux, 0, m_d_deformationFieldU, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeLaplacian += timer.get();
     	m_nComputeLaplacian += 1;
     	timer.start();
-        computeLapacian(m_d_lapV, m_d_deformationFieldV, m_gridW, m_gridH, m_gridD);
+        computeLapacian(m_d_lapV, m_d_dvy, 1, m_d_deformationFieldV, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeLaplacian += timer.get();
     	m_nComputeLaplacian += 1;
     	timer.start();
-        computeLapacian(m_d_lapW, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        computeLapacian(m_d_lapW, m_d_dwz, 2, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeLaplacian += timer.get();
     	m_nComputeLaplacian += 1;
 
-        //compute divergence and then the gradients of the divergence of deformation field
+        // Compute divergence of the deformation field
         timer.start();
         computeDivergence(m_d_div, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        //sumGradients(m_d_div, m_d_dux, m_d_dvy, m_d_dwz, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeDivergence += timer.get();
     	m_nComputeDivergence += 1;
+    	// Compute the gradients of the divergence of deformation field
     	timer.start();
         computeGradient(m_d_divX, m_d_divY, m_d_divZ, m_d_div, m_gridW, m_gridH, m_gridD);
         timer.end();
@@ -555,7 +557,7 @@ void Optimizer::plotIntermediateResults(TSDFVolume* tsdfLive)
 
 	// Compute intermediate steps
 	computeGradient(m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_tsdfLive, m_gridW, m_gridH, m_gridD);
-	computeLapacian(m_d_lapU, m_d_tsdfLive, m_gridW, m_gridH, m_gridD);
+	computeLapacian(m_d_lapU, m_d_dux, 0, m_d_tsdfLive, m_gridW, m_gridH, m_gridD);
 	computeHessian(m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ, m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_gridW, m_gridH, m_gridD);
 	
 	float* tsdfLiveGridDef = new float[m_gridW * m_gridH * m_gridD];
@@ -624,23 +626,44 @@ void Optimizer::computeGradient(float* gradOutX, float* gradOutY, float* gradOut
 
 void Optimizer::computeDivergence(float* divOut, const float* gridInU, const float* gridInV, const float* gridInW, int w, int h, int d)
 {
-
-
 	// Compute gradients for the deformation field
 	computeGradient3DX(m_d_du, gridInU, w, h, d);
 	computeGradient3DY(m_d_dv, gridInV, w, h, d);
 	computeGradient3DZ(m_d_dw, gridInW, w, h, d);
 
 	// Sum the three gradient components
-	computeDivergence3DCuda(divOut, m_d_du, m_d_dv, m_d_dw, w, h, d);
+	computeDivergence3D(divOut, m_d_du, m_d_dv, m_d_dw, w, h, d);
 }
 
-void Optimizer::computeLapacian(float* lapOut, const float* deformationIn, int w, int h, int d)
+void Optimizer::sumGradients(float* divOut, const float* duxIn, const float* dvyIn, const float* dwzIn, int w, int h, int d)
 {
-    //todo since this function uses m_d_dux/y/z as temporary storage variables, but their names collide with the the derivatives of the dux/y/z
-    //their naming must be changed
-	computeGradient(m_d_dux, m_d_duy, m_d_duz, deformationIn, w, h, d);
-	computeDivergence(lapOut, m_d_dux, m_d_duy, m_d_duz, w, h, d);
+	// Sum the three gradient components
+	computeDivergence3D(divOut, duxIn, dvyIn, dwzIn, w, h, d);
+}
+
+void Optimizer::computeLapacian(float* lapOut, float* dOut, const size_t dOutComponent, const float* deformationIn, int w, int h, int d)
+{
+	if (dOutComponent == 0)
+	{
+		computeGradient3DX(dOut, deformationIn, w, h, d);
+		computeGradient3DY(m_d_duy, deformationIn, w, h, d);
+		computeGradient3DZ(m_d_duz, deformationIn, w, h, d);
+		computeDivergence(lapOut, dOut, m_d_duy, m_d_duz, w, h, d);
+	}
+	else if (dOutComponent == 1)
+	{
+		computeGradient3DX(m_d_dvx, deformationIn, w, h, d);
+		computeGradient3DY(dOut, deformationIn, w, h, d);
+		computeGradient3DZ(m_d_dvz, deformationIn, w, h, d);
+		computeDivergence(lapOut, m_d_dvx, dOut, m_d_dvz, w, h, d);
+	}
+	else
+	{
+		computeGradient3DX(m_d_dwx, deformationIn, w, h, d);
+		computeGradient3DY(m_d_dwy, deformationIn, w, h, d);
+		computeGradient3DZ(dOut, deformationIn, w, h, d);
+		computeDivergence(lapOut, m_d_dwx, m_d_dwy, dOut, w, h, d);
+	}
 }
 
 void Optimizer::computeHessian(float* hessOutXX, float* hessOutXY, float* hessOutXZ, float* hessOutYY, float* hessOutYZ, float* hessOutZZ, const float* gradX, const float* gradY, const float* gradZ, int w, int h, int d)
