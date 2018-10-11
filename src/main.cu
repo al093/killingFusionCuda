@@ -173,8 +173,8 @@ int main(int argc, char *argv[])
 
     for (size_t i = 0; i < gridW*gridH*gridD; i++)
     {
-        deformationU[i] = 0.0f;
-        deformationV[i] = 0.0f; 
+        deformationU[i] = 4.56f;
+        deformationV[i] = -14.37f; 
         deformationW[i] = 0.0f;   
     }
     
@@ -235,17 +235,11 @@ int main(int argc, char *argv[])
         }
 		else
 		{
-            // initial pose for volume by computing centroid of first depth/vertex map
-            /*cv::Mat vertMap;
-            depthToVertexMap(K, depth, vertMap);
-            Vec3f transCentroid = centroid(vertMap);
-            poseVolume.topRightCorner<3,1>() = transCentroid;
-            std::cout << "pose centroid" << std::endl << poseVolume << std::endl;*/
-			// integrate frame into tsdf volume
+			// Integrate frame into tsdf volume
         	tsdfLive->integrate(poseVolume, color, depth);
-
-			// TODO: perform optimization
+            // Perform optimization
 			optimizer->optimize(tsdfLive);
+            //optimizer->testIntermediateSteps(tsdfLive);
 		}
         delete tsdfLive;
     }
@@ -266,9 +260,8 @@ int main(int argc, char *argv[])
         std::cerr << "Could not save accumulated mesh!" << std::endl;
     }
 
-    // clean up
+    // Clean up
     delete tsdfGlobal;
-	//delete tsdfLive;
 	delete optimizer;
     cv::destroyAllWindows();
 

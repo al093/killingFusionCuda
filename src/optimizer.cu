@@ -305,7 +305,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
     do
 	{
-        ++itr;
+        itr = itr + 1;
         if(m_debugMode) std::cout << std::endl << "GD itr num: " << itr;
         
 		// Interpolate TSDF Live Frame (EXAMPLE: HOW TO INTERPOLATE PHIn DEFORMED BY PSI)
@@ -353,17 +353,17 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
         // Compute laplacians of the deformation field
         timer.start();
-        computeLapacian(m_d_lapU, m_d_dux, 0, m_d_deformationFieldU, m_gridW, m_gridH, m_gridD);
+        computeLaplacian(m_d_lapU, m_d_dux, 0, m_d_deformationFieldU, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeLaplacian += timer.get();
     	m_nComputeLaplacian += 1;
     	timer.start();
-        computeLapacian(m_d_lapV, m_d_dvy, 1, m_d_deformationFieldV, m_gridW, m_gridH, m_gridD);
+        computeLaplacian(m_d_lapV, m_d_dvy, 1, m_d_deformationFieldV, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeLaplacian += timer.get();
     	m_nComputeLaplacian += 1;
     	timer.start();
-        computeLapacian(m_d_lapW, m_d_dwz, 2, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        computeLaplacian(m_d_lapW, m_d_dwz, 2, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeLaplacian += timer.get();
     	m_nComputeLaplacian += 1;
@@ -417,7 +417,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
             std::cout<< "| Killing Energy: " << killingEnergy;
         }
 
-        //multiply by weights
+        // Interpolate current frame weights
         interpLiveWeights->interpolate3D(m_d_tsdfLiveWeightsDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 
         // Update new state of the deformation field
@@ -450,7 +450,10 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         m_timeFindAbsMax += timer.get();
     	m_nFindAbsMax += 1;
 
-        if(m_debugMode) std::cout << "| Last Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
+        if(m_debugMode)
+        {
+        	std::cout << "| Last Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
+        }
 
 	} while ((m_alpha * currentMaxVectorUpdate) > m_maxVectorUpdateThreshold && itr < m_maxIterations);
 
@@ -546,7 +549,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
     delete interpLiveWeights;
 }
 
-void Optimizer::plotIntermediateResults(TSDFVolume* tsdfLive)
+void Optimizer::testIntermediateSteps(TSDFVolume* tsdfLive)
 {
 	// Initialize variable
 	float* tsdfLiveGrid = tsdfLive->ptrTsdf();
@@ -554,62 +557,25 @@ void Optimizer::plotIntermediateResults(TSDFVolume* tsdfLive)
 
 	// Compute intermediate steps
 	computeGradient(m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_d_tsdfLive, m_gridW, m_gridH, m_gridD);
-	computeLapacian(m_d_lapU, m_d_dux, 0, m_d_tsdfLive, m_gridW, m_gridH, m_gridD);
+	computeLaplacian(m_d_lapU, m_d_dux, 0, m_d_tsdfLive, m_gridW, m_gridH, m_gridD);
 	computeHessian(m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ, m_d_sdfDx, m_d_sdfDy, m_d_sdfDz, m_gridW, m_gridH, m_gridD);
 	
-	float* tsdfLiveGridDef = new float[m_gridW * m_gridH * m_gridD];
-	float* gradX = new float[m_gridW * m_gridH * m_gridD];
-	float* lapU = new float[m_gridW * m_gridH * m_gridD];
-	float* hessXX = new float[m_gridW * m_gridH * m_gridD];
-	cudaMemcpy(gradX, m_d_sdfDx, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-	cudaMemcpy(lapU, m_d_lapU, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-	cudaMemcpy(hessXX, m_d_hessXX, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-	// Interpolate
+	// Perform interpolation
 	float* d_tsdfDef = NULL;
 	cudaMalloc(&d_tsdfDef, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
 	Interpolator *interptsdf = new Interpolator(m_d_tsdfLive, m_gridW, m_gridH, m_gridD);
 	interptsdf->interpolate3D(d_tsdfDef, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 
-
-	//uploadToTextureMemory(tsdfLiveGrid, m_gridW, m_gridH, m_gridD);
-	//test3dInterpolation(d_tsdfDef, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-	cudaDeviceSynchronize();
-	//freeTextureMemory();
-	cudaMemcpy(tsdfLiveGridDef, d_tsdfDef, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-
-	float* sliceTSDF = new float[m_gridW*m_gridH];
-	float* sliceGradX = new float[m_gridW*m_gridH];
-	float* sliceLapU = new float[m_gridW*m_gridH];
-	float* sliceHessXX = new float[m_gridW*m_gridH];
-	float* sliceTSDFDef = new float[m_gridW*m_gridH];
-
-	cv::Mat m_tsdf(m_gridH, m_gridW, CV_32F);	
-	cv::Mat m_grad_X(m_gridH, m_gridW, CV_32F);
-	cv::Mat m_lapU(m_gridH, m_gridW, CV_32F);
-	cv::Mat m_hessXX(m_gridH, m_gridW, CV_32F);
-	cv::Mat m_tsdfDef(m_gridH, m_gridW, CV_32F);
-	getSlice(sliceTSDFDef, tsdfLiveGridDef, 128, 2, m_gridW, m_gridH, m_gridD);
-	getSlice(sliceTSDF, tsdfLiveGrid, 128, 2, m_gridW, m_gridH, m_gridD);
-	getSlice(sliceGradX, gradX, 128, 2, m_gridW, m_gridH, m_gridD);
-	getSlice(sliceLapU, lapU, 128, 2, m_gridW, m_gridH, m_gridD);
-	getSlice(sliceHessXX, hessXX, 128, 2, m_gridW, m_gridH, m_gridD);
-	convertLayeredToMat(m_tsdf, sliceTSDF);
-	convertLayeredToMat(m_grad_X, sliceGradX);
-	convertLayeredToMat(m_lapU, sliceLapU);
-	convertLayeredToMat(m_hessXX, sliceHessXX);
-	convertLayeredToMat(m_tsdfDef, sliceTSDFDef);
-	double min, max, minGrad, maxGrad, minLap, maxLap, minHessXX, maxHessXX;
-	cv::minMaxLoc(m_tsdf, &min, &max);
-	cv::minMaxLoc(m_grad_X, &minGrad, &maxGrad);
-	cv::minMaxLoc(m_lapU, &minLap, &maxLap);
-	cv::minMaxLoc(m_hessXX, &minHessXX, &maxHessXX);
-	std::cout << "Min: " << min << ". Max: " << max << std::endl;
-	showImage("TSDF", (m_tsdf - min) / (max - min), 100, 100);
-	showImage("TSDF Deform", (m_tsdfDef - min) / (max - min), 100, 100);
-	showImage("Grad X", (m_grad_X - minGrad) / (maxGrad - minGrad), 100+40, 100);
-	showImage("Laplacian U", m_lapU, 100+40, 100); //(m_lapU - minLap) / (maxLap - minLap)
-	showImage("Hessian XX", (m_hessXX - minHessXX) / (maxHessXX - minHessXX), 100+40, 100);
+	// Plot slices
+	plotSlice(m_d_tsdfLive, m_gridD / 2, 2, "TSDF", 100 + 4*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+	plotSlice(d_tsdfDef, m_gridD / 2, 2, "TSDF Deform", 100 + 8*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+	plotSlice(m_d_sdfDx, m_gridD / 2, 2, "Grad X", 100 + 12*m_gridW, 100, m_gridW, m_gridH, m_gridD);
+	plotSlice(m_d_lapU, m_gridD / 2, 2, "Laplacian U", 100 + m_gridW, 100 + 4*m_gridW, m_gridW, m_gridH, m_gridD);
+	plotSlice(m_d_hessXX, m_gridD / 2, 2, "Hessian XX", 100 + 4*m_gridW, 100 + 4*m_gridW, m_gridW, m_gridH, m_gridD);
 	cv::waitKey();
+
+	// Destroy used object
+	delete interptsdf;
 }
 
 
@@ -638,7 +604,7 @@ void Optimizer::sumGradients(float* divOut, const float* duxIn, const float* dvy
 	computeDivergence3D(divOut, duxIn, dvyIn, dwzIn, w, h, d);
 }
 
-void Optimizer::computeLapacian(float* lapOut, float* dOut, const size_t dOutComponent, const float* deformationIn, int w, int h, int d)
+void Optimizer::computeLaplacian(float* lapOut, float* dOut, const size_t dOutComponent, const float* deformationIn, int w, int h, int d)
 {
 	if (dOutComponent == 0)
 	{
