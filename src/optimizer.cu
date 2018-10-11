@@ -24,8 +24,8 @@ Color::Modifier green(Color::FG_GREEN);
 Color::Modifier def(Color::FG_DEFAULT);
 
 Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, 
-                     const float alpha, const float wk, const float ws, const size_t maxIterations, const float voxelSize,
-                     const bool debugMode, const size_t gridW, const size_t gridH, const size_t gridD) :
+                     const float alpha, const float wk, const float ws, const float gamma, const size_t maxIterations,
+                     const float voxelSize, const bool debugMode, const size_t gridW, const size_t gridH, const size_t gridD) :
 	m_tsdfGlobal(tsdfGlobal),
     m_deformationFieldU(initialDeformationU),
     m_deformationFieldV(initialDeformationV),
@@ -33,6 +33,7 @@ Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* 
     m_alpha(alpha),
 	m_wk(wk),
 	m_ws(ws),
+	m_gamma(gamma),
 	m_maxIterations(maxIterations),
 	m_voxelSize(voxelSize),
 	m_debugMode(debugMode),
@@ -293,10 +294,10 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	
     Interpolator *interpLiveWeights = new Interpolator(m_d_tsdfLiveWeights, m_gridW, m_gridH, m_gridD);
 
-	/* IN ORDER TO COMPUTE ENERGIES: 	PSI is m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW
-										PHIglobal is m_d_tsdfGlobal			PHIn is m_d_tsdfLive
-										GRADIENT OF PHIn IS: m_d_sdfDx, m_d_sdfDy, m_d_sdfDz
-										HESSIAN OF PHIn IS: m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ
+	/* Energy Computation (wrt the paper): 	PSI is m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW
+											PHIglobal is m_d_tsdfGlobal			PHIn is m_d_tsdfLive
+											GRADIENT OF PHIn IS: m_d_sdfDx, m_d_sdfDy, m_d_sdfDz
+											HESSIAN OF PHIn IS: m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ
 	*/
 
     if (m_debugMode) std::cout<< "Deforming SDF..." << std::endl;
@@ -369,7 +370,6 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
         // Compute divergence of the deformation field
         timer.start();
-        //computeDivergence(m_d_div, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         sumGradients(m_d_div, m_d_dux, m_d_dvy, m_d_dwz, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeDivergence += timer.get();
@@ -380,16 +380,13 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         timer.end();
         m_timeComputeGradient += timer.get();
     	m_nComputeGradient += 1;
-
-        //TODO make gamma (the killing field weight) a member variable
-        float gamma = 0.1;
         
         //compute motion regularizer derivative
         timer.start();
         computeMotionRegularizerDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
                                            m_d_lapU, m_d_lapV, m_d_lapW,
                                            m_d_divX, m_d_divY, m_d_divZ,
-                                           m_wk, gamma,
+                                           m_wk, m_gamma,
                                            m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeMotionRegularizerDerivative += timer.get();
@@ -412,7 +409,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
             computeGradient(m_d_dwx, m_d_dwy, m_d_dwz, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 
             float killingEnergy = 0.0;
-            computeKillingEnergy(&killingEnergy, gamma,
+            computeKillingEnergy(&killingEnergy, m_gamma,
                                   m_d_dux, m_d_duy, m_d_duz,
                                   m_d_dvx, m_d_dvy, m_d_dvz,
                                   m_d_dwx, m_d_dwy, m_d_dwz,

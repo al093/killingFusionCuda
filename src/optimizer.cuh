@@ -7,7 +7,7 @@ class Optimizer
 public:
 
     Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha,
-    		  const float wk, const float ws, const size_t maxIterations, const float voxelSize, const bool debugMode,
+    		  const float wk, const float ws, const float gamma, const size_t maxIterations, const float voxelSize, const bool debugMode,
     		  const size_t gridW, const size_t gridH, const size_t gridD);
     ~Optimizer();
 
@@ -33,6 +33,7 @@ protected:
     const float m_alpha;
 	const float m_wk;
 	const float m_ws;
+	const float m_gamma;
 	const size_t m_maxIterations;
 	const bool m_debugMode;
 	const size_t m_gridW, m_gridH, m_gridD;

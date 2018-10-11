@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
         "{d|debug|false|Debug mode}"
         "{wk|wk|0.5|Killing term weight}"
         "{ws|ws|0.1|Level set weight}"
+        "{g|gamma|0.1|Killing property weight}"
     };
     cv::CommandLineParser cmd(argc, argv, params);
 
@@ -142,10 +143,14 @@ int main(int argc, char *argv[])
     float ws = (float)cmd.get<float>("ws");
     std::cout << "w_s: " << ws << std::endl;
 
-    // initialize cuda context
+    // Killing property term weight
+    float gamma = (float)cmd.get<float>("gamma");
+    std::cout << "gamma: " << gamma << std::endl;
+
+    // Initialize cuda context
     cudaDeviceSynchronize(); CUDA_CHECK;
 
-    // load camera intrinsics
+    // Load camera intrinsics
     Eigen::Matrix3f K;
     if (!loadIntrinsics(inputSequence + "/intrinsics_kinect1.txt", K))
     {
@@ -218,7 +223,7 @@ int main(int argc, char *argv[])
             poseVolume.topRightCorner<3,1>() = transCentroid;
             std::cout << std::endl << "pose centroid" << std::endl << poseVolume << std::endl;
 			tsdfGlobal->integrate(poseVolume, color, depth);
-			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, iterations, voxelSize, debugMode, gridW, gridH, gridD);
+			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gamma, iterations, voxelSize, debugMode, gridW, gridH, gridD);
 
 			MarchingCubes mc(volDim, volSize);
     		mc.computeIsoSurface(tsdfGlobal->ptrTsdf(), tsdfGlobal->ptrTsdfWeights(), tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
