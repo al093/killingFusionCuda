@@ -1,0 +1,70 @@
+Mean running times (ms): 
+- computeGradient: 0.21716 (1632 iterations)
+- computeHessian: 0.432211 (19 iterations)
+- computeLaplacian: 0.514276 (4839 iterations)
+- computeDivergence: 0.302701 (1613 iterations)
+- computeDataTermDeritavie: 0.244251 (1613 iterations)
+- computeLevelSetDerivative: 4.19184 (1613 iterations)
+- computeMotionRegularizerDerivatie: 0.45524 (1613 iterations)
+- addArray: 0.070696 (4839 iterations)
+- computeMagnitude: 0.103971 (1613 iterations)
+- findAbsMax: 0.737942 (1613 iterations)
+- addWeightedArray: 0.131368 (19 iterations)
+Extracting mesh...
+Saving mesh...
+
+
+Working on frame: 3 GD Converged (128 iterations, 885.054ms). Last max update: 0.0112282
+Working on frame: 4 GD Converged (266 iterations, 1522.45ms). Last max update: 0.0117302
+Working on frame: 5 GD Converged (58 iterations, 334.339ms). Last max update: 0.0124358
+Working on frame: 6 GD Converged (56 iterations, 323.732ms). Last max update: 0.0120131
+Working on frame: 7 GD Converged (39 iterations, 226.77ms). Last max update: 0.0116139
+Working on frame: 8 GD Converged (51 iterations, 295.058ms). Last max update: 0.0122848
+Working on frame: 9 GD Converged (116 iterations, 664.399ms). Last max update: 0.0124388
+Working on frame: 10 GD Converged (156 iterations, 891.49ms). Last max update: 0.0124226
+Working on frame: 11 GD Converged (82 iterations, 470.98ms). Last max update: 0.0109877
+Working on frame: 12 GD Converged (49 iterations, 283.112ms). Last max update: 0.0110327
+Working on frame: 13 GD Converged (63 iterations, 363.228ms). Last max update: 0.0121497
+Working on frame: 14 GD Converged (37 iterations, 215.244ms). Last max update: 0.0114209
+Working on frame: 15 GD Converged (32 iterations, 187.66ms). Last max update: 0.0116306
+Working on frame: 16 GD Converged (44 iterations, 255.556ms). Last max update: 0.0124873
+Working on frame: 17 GD Converged (74 iterations, 426.148ms). Last max update: 0.0119807
+Working on frame: 18 GD Converged (139 iterations, 798.899ms). Last max update: 0.0118551
+Working on frame: 19 GD Converged (85 iterations, 502.393ms). Last max update: 0.0114686
+Working on frame: 20 GD Converged (90 iterations, 532.222ms). Last max update: 0.0123344
+Working on frame: 21 GD Converged (50 iterations, 294.681ms). Last max update: 0.0120706
+
+Mean optimization time per frame: 498.601ms
+Mean running times (ms): 
+- computeGradient: 0.219151 (1634 iterations)
+- computeHessian: 0.429947 (19 iterations)
+- computeLaplacian: 0.516346 (4845 iterations)
+- computeDivergence: 0.305493 (1615 iterations)
+- computeDataTermDeritavie: 0.244252 (1615 iterations)
+- computeLevelSetDerivative: 0.35294 (1615 iterations)
+- computeMotionRegularizerDerivatie: 0.458117 (1615 iterations)
+- addArray: 0.0712843 (4845 iterations)
+- computeMagnitude: 0.100981 (1615 iterations)
+- findAbsMax: 1.04151 (1615 iterations)
+- addWeightedArray: 0.131368 (19 iterations)
+Extracting mesh...
+Saving mesh...
+
+
+Mean optimization time per frame: 478.976ms
+Mean running times (ms): 
+- computeGradient: 0.217293 (1634 iterations)
+- computeHessian: 0.435263 (19 iterations)
+- computeLaplacian: 0.514878 (4845 iterations)
+- computeDivergence: 0.0927327 (1615 iterations)
+- computeDataTermDeritavie: 0.242228 (1615 iterations)
+- computeLevelSetDerivative: 0.350415 (1615 iterations)
+- computeMotionRegularizerDerivatie: 0.456472 (1615 iterations)
+- addArray: 0.0710343 (4845 iterations)
+- computeMagnitude: 0.103207 (1615 iterations)
+- findAbsMax: 1.03916 (1615 iterations)
+- addWeightedArray: 0.131526 (19 iterations)
+Extracting mesh...
+Saving mesh...
+
+
