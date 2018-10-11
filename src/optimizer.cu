@@ -369,8 +369,8 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
         // Compute divergence of the deformation field
         timer.start();
-        computeDivergence(m_d_div, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-        //sumGradients(m_d_div, m_d_dux, m_d_dvy, m_d_dwz, m_gridW, m_gridH, m_gridD);
+        //computeDivergence(m_d_div, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        sumGradients(m_d_div, m_d_dux, m_d_dvy, m_d_dwz, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeDivergence += timer.get();
     	m_nComputeDivergence += 1;
