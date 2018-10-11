@@ -128,7 +128,7 @@ void Optimizer::allocateMemoryInDevice()
     cudaMemset(m_d_energyDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
     cudaMemset(m_d_energyDw, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
     
-    //used by the compute Divergence function
+    // Allocate gradients used by the compute divergence function
     cudaMalloc(&m_d_du, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
     cudaMalloc(&m_d_dv, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
     cudaMalloc(&m_d_dw, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -143,10 +143,12 @@ void Optimizer::copyArraysToDevice()
 	// TSDF Global (not working by now)
 	cudaMemcpy(m_d_tsdfGlobal, m_tsdfGlobal->ptrTsdf(), (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 	cudaMemcpy(m_d_tsdfGlobalWeights, m_tsdfGlobal->ptrTsdfWeights(), (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
+	
 	// Derivative kernels
 	cudaMemcpy(m_d_kernelDx, m_kernelDxCentralDiff, (27) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 	cudaMemcpy(m_d_kernelDy, m_kernelDyCentralDiff, (27) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 	cudaMemcpy(m_d_kernelDz, m_kernelDzCentralDiff, (27) * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
+	
 	// Deformation fields
 	cudaMemcpy(m_d_deformationFieldU, m_deformationFieldU, (m_gridW * m_gridH * m_gridD)  * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
 	cudaMemcpy(m_d_deformationFieldV, m_deformationFieldV, (m_gridW * m_gridH * m_gridD)  * sizeof(float), cudaMemcpyHostToDevice); CUDA_CHECK;
@@ -155,23 +157,86 @@ void Optimizer::copyArraysToDevice()
 
 Optimizer::~Optimizer()
 {
-    //TODO Really Important for our GRADES! Free all the allocated memory.
+    // Free current TSDF
+	cudaFree(m_d_tsdfGlobal); CUDA_CHECK;
+	cudaFree(m_d_tsdfLive); CUDA_CHECK;
+	cudaFree(m_d_tsdfGlobalWeights); CUDA_CHECK;
+	cudaFree(m_d_tsdfLiveWeights); CUDA_CHECK;
+
+	// Free deformation field
 	cudaFree(m_d_deformationFieldU); CUDA_CHECK;
 	cudaFree(m_d_deformationFieldV); CUDA_CHECK;
 	cudaFree(m_d_deformationFieldW); CUDA_CHECK;
+
+	// Free kernels
 	cudaFree(m_d_kernelDx); CUDA_CHECK;
 	cudaFree(m_d_kernelDy); CUDA_CHECK;
 	cudaFree(m_d_kernelDz); CUDA_CHECK;
-	cudaFree(m_d_div); CUDA_CHECK;
+
+	// Free SDF live gradients
+	cudaFree(m_d_sdfDx); CUDA_CHECK;
+	cudaFree(m_d_sdfDy); CUDA_CHECK;
+	cudaFree(m_d_sdfDz); CUDA_CHECK;
+
+	// Free deformation field gradients
+	cudaFree(m_d_dux); CUDA_CHECK;
+	cudaFree(m_d_duy); CUDA_CHECK;
+	cudaFree(m_d_duz); CUDA_CHECK;
     cudaFree(m_d_dvx); CUDA_CHECK;
     cudaFree(m_d_dvy); CUDA_CHECK;
     cudaFree(m_d_dvz); CUDA_CHECK;
     cudaFree(m_d_dwx); CUDA_CHECK;
     cudaFree(m_d_dwy); CUDA_CHECK;
     cudaFree(m_d_dwz); CUDA_CHECK;
+
+	// Free hessian
+	cudaFree(m_d_hessXX); CUDA_CHECK;
+	cudaFree(m_d_hessXY); CUDA_CHECK;
+	cudaFree(m_d_hessXZ); CUDA_CHECK;
+	cudaFree(m_d_hessYY); CUDA_CHECK;
+	cudaFree(m_d_hessYZ); CUDA_CHECK;
+	cudaFree(m_d_hessZZ); CUDA_CHECK;
+
+	// Free divergence
+	cudaFree(m_d_div); CUDA_CHECK;
+    cudaFree(m_d_divX); CUDA_CHECK;
+    cudaFree(m_d_divY); CUDA_CHECK;
+    cudaFree(m_d_divZ); CUDA_CHECK;
+
+	// Free laplacian
+    cudaFree(m_d_lapU); CUDA_CHECK;
+    cudaFree(m_d_lapV); CUDA_CHECK;
+    cudaFree(m_d_lapW); CUDA_CHECK;
+
+	// Free interpolated grids
+	cudaFree(m_d_tsdfLiveDeform); CUDA_CHECK;
+	cudaFree(m_d_sdfDxDeform); CUDA_CHECK;
+	cudaFree(m_d_sdfDyDeform); CUDA_CHECK;
+	cudaFree(m_d_sdfDzDeform); CUDA_CHECK;
+	cudaFree(m_d_hessXXDeform); CUDA_CHECK;
+	cudaFree(m_d_hessXYDeform); CUDA_CHECK;
+	cudaFree(m_d_hessXZDeform); CUDA_CHECK;
+	cudaFree(m_d_hessYYDeform); CUDA_CHECK;
+	cudaFree(m_d_hessYZDeform); CUDA_CHECK;
+	cudaFree(m_d_hessZZDeform); CUDA_CHECK;
+    cudaFree(m_d_tsdfLiveWeightsDeform); CUDA_CHECK;
+
+	// Free magnitude grid
+	cudaFree(m_d_magnitude); CUDA_CHECK;
+
+    // Free mask - only near surface regions deformation is to be calculated
+    cudaFree(m_d_mask); CUDA_CHECK;
+
+    // Free gradients of energy
+    cudaFree(m_d_energyDu); CUDA_CHECK;
+    cudaFree(m_d_energyDv); CUDA_CHECK;
+    cudaFree(m_d_energyDw); CUDA_CHECK;
+    
+    // Free gradients used by the compute divergence function
     cudaFree(m_d_du); CUDA_CHECK;
     cudaFree(m_d_dv); CUDA_CHECK;
     cudaFree(m_d_dw); CUDA_CHECK;
+    
     cudaFree(m_d_dfx); CUDA_CHECK;
     cudaFree(m_d_dfy); CUDA_CHECK;
     cudaFree(m_d_dfz); CUDA_CHECK;
@@ -189,7 +254,7 @@ void Optimizer::getTSDFGlobalWeightsPtr(float* tsdfGlobalWeightsPtr)
 
 void Optimizer::printTimes()
 {
-	std::cout << "Mean running times (ms): " << std::endl;
+	std::cout << std::endl << "Mean running times (ms): " << std::endl;
 	std::cout << "- computeGradient: " << 1000*m_timeComputeGradient / (float)m_nComputeGradient << " (" << m_nComputeGradient << " iterations)" <<std::endl;
 	std::cout << "- computeHessian: " << 1000*m_timeComputeHessian / (float)m_nComputeHessian << " (" << m_nComputeHessian << " iterations)" <<std::endl;
 	std::cout << "- computeLaplacian: " << 1000*m_timeComputeLaplacian / (float)m_nComputeLaplacian << " (" << m_nComputeLaplacian << " iterations)" <<std::endl;
