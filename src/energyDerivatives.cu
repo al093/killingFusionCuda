@@ -48,7 +48,7 @@ void computeLevelSetDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *
 
         //if(d_mask[idx])
         {
-            float gradNorm = pow(d_gradPhiNDeformedX[idx], 2) + pow(d_gradPhiNDeformedY[idx], 2) + pow(d_gradPhiNDeformedZ[idx], 2);
+            float gradNorm = d_gradPhiNDeformedX[idx]*d_gradPhiNDeformedX[idx] + d_gradPhiNDeformedY[idx]*d_gradPhiNDeformedY[idx] + d_gradPhiNDeformedZ[idx]*d_gradPhiNDeformedZ[idx];
             gradNorm = sqrt(gradNorm);
 
             float scalar = ws*(gradNorm - 1.0)/(gradNorm+0.00001);

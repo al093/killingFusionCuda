@@ -2,17 +2,6 @@
 #include "mat.h"
 #include "tsdf_volume.h"
 
-
-const float m_kernelDxCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-									   0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
-									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-const float m_kernelDyCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-									   0.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
-									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-const float m_kernelDzCentralDiff[27] = {0.0f, 0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
-									   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-									   0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f};
-
 class Optimizer
 {
 public:
@@ -27,17 +16,16 @@ public:
 	void printTimes();
 
 	void optimize(TSDFVolume* tsdfLive);
-	void optimizeTest(TSDFVolume* tsdfLive);
-	void test(TSDFVolume* tsdfLive);
+	void plotIntermediateResults(TSDFVolume* tsdfLive);
 	
 
 protected:
 	void allocateMemoryInDevice();
 	void copyArraysToDevice();
-	void computeGradient(float* gradOutX, float* gradOutY, float* gradOutZ, const float* gridIn, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
-	void computeDivergence(float* divOut, const float* gridInU, const float* gridInV, const float* gridInW, const float *kernelDx, const float *kernelDy, const float *kernelDz, int kradius, int w, int h, int d);
-	void computeLapacian(float* lapOut, const float* deformationIn, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d);
-	void computeHessian(float* hessOutXX, float* hessOutXY, float* hessOutXZ, float* hessOutYY, float* hessOutYZ, float* hessOutZZ, const float* gradX, const float* gradY, const float* gradZ, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d);
+	void computeGradient(float* gradOutX, float* gradOutY, float* gradOutZ, const float* gridIn, int w, int h, int d);
+	void computeDivergence(float* divOut, const float* gridInU, const float* gridInV, const float* gridInW, int w, int h, int d);
+	void computeLapacian(float* lapOut, const float* deformationIn, int w, int h, int d);
+	void computeHessian(float* hessOutXX, float* hessOutXY, float* hessOutXZ, float* hessOutYY, float* hessOutYZ, float* hessOutZZ, const float* gradX, const float* gradY, const float* gradZ, int w, int h, int d);
 
     TSDFVolume* m_tsdfGlobal;
     
@@ -77,11 +65,6 @@ protected:
 	float* m_d_deformationFieldU = NULL;
 	float* m_d_deformationFieldV = NULL;
 	float* m_d_deformationFieldW = NULL;
-
-	// Kernels
-	float* m_d_kernelDx = NULL;
-	float* m_d_kernelDy = NULL;
-	float* m_d_kernelDz = NULL;
 
 	// Gradients of live SDF
 	float* m_d_sdfDx = NULL;

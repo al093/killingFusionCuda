@@ -93,10 +93,9 @@ CUDA_ADD_EXECUTABLE(${APP_NAME}
         src/dataset.h src/dataset.cpp
         src/helper.cuh src/helper.cu
         src/gradient.cuh src/gradient.cu
-        src/convolution.cuh src/convolution.cu
         src/divergence.cuh src/divergence.cu
-	src/magnitude.cuh src/magnitude.cu
-	src/visualization.cuh src/visualization.cu
+	    src/magnitude.cuh src/magnitude.cu
+	    src/visualization.cuh src/visualization.cu
         src/optimizer.cuh src/optimizer.cu
         src/energyDerivatives.cuh src/energyDerivatives.cu
         src/energy.cuh src/energy.cu
