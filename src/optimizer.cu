@@ -691,9 +691,7 @@ void Optimizer::computeGradient(float* gradOutX, float* gradOutY, float* gradOut
 
 void Optimizer::computeDivergence(float* divOut, const float* gridInU, const float* gridInV, const float* gridInW, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d)
 {
-    cudaMalloc(&m_d_du, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
-    cudaMalloc(&m_d_dv, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
-    cudaMalloc(&m_d_dw, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
+
 
 	// Compute gradients for the deformation field
 	computeGradient3DX(m_d_du, gridInU, w, h, d);
@@ -702,10 +700,6 @@ void Optimizer::computeDivergence(float* divOut, const float* gridInU, const flo
 
 	// Sum the three gradient components
 	computeDivergence3DCuda(divOut, m_d_du, m_d_dv, m_d_dw, w, h, d);
-
-    cudaFree(m_d_du); CUDA_CHECK;
-    cudaFree(m_d_dv); CUDA_CHECK;
-    cudaFree(m_d_dw); CUDA_CHECK;
 }
 
 void Optimizer::computeLapacian(float* lapOut, const float* deformationIn, const float* kernelDx, const float* kernelDy, const float* kernelDz, int kradius, int w, int h, int d)
