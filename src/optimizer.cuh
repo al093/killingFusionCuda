@@ -41,16 +41,10 @@ protected:
 	// Timing variables
 	float m_timeComputeGradient = 0.0f, m_timeComputeHessian = 0.0f, m_timeComputeLaplacian = 0.0f, m_timeComputeDivergence = 0.0f,
 		   m_timeComputeDataTermDerivative = 0.0f, m_timeComputeLevelSetDerivative = 0.0f, m_timeComputeMotionRegularizerDerivative = 0.0f,
-		   m_timeAddArray = 0.0f, m_timeComputeMagnitude = 0.0f, m_timeFindAbsMax = 0.0f, m_timeAddWeightedArray = 0.0f;
+		   m_timeAddArray = 0.0f, m_timeComputeMagnitude = 0.0f, m_timeFindAbsMax = 0.0f, m_timeAddWeightedArray = 0.0f, m_timeFramesOptimized = 0.0f;
 	size_t m_nComputeGradient = 0, m_nComputeHessian = 0, m_nComputeLaplacian = 0, m_nComputeDivergence = 0,
 		   m_nComputeDataTermDerivative = 0, m_nComputeLevelSetDerivative = 0, m_nComputeMotionRegularizerDerivative = 0,
-		   m_nAddArray = 0, m_nComputeMagnitude = 0, m_nFindAbsMax = 0, m_nAddWeightedArray = 0;
-
-
-
-	// Gradients of deformation field
-    //TODO these variables may not be needed during normal runtimes, only needed for debugging
-    //but the laplacian function uses m_d_dux/y/z as temp variables!!
+		   m_nAddArray = 0, m_nComputeMagnitude = 0, m_nFindAbsMax = 0, m_nAddWeightedArray = 0, m_nFramesOptimized = 0;
 
     // TSDFs and weights
 	float* m_d_tsdfGlobal = NULL;

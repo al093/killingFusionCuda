@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
     for (size_t i = firstFrameId; i < frames; ++i)
     {
         tsdfLive = new TSDFVolume(volDim, volSize, K, i);
-        std::cout << std::endl << "\nWorking on frame: " << i;
+        std::cout << "Working on frame: " << i;
 
         // load input frame
         if (!loadFrame(inputSequence, i, color, depth, mask))
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
             depthToVertexMap(K, depth, vertMap);
             Vec3f transCentroid = centroid(vertMap);
             poseVolume.topRightCorner<3,1>() = transCentroid;
-            std::cout << "pose centroid" << std::endl << poseVolume << std::endl;
+            std::cout << std::endl << "pose centroid" << std::endl << poseVolume << std::endl;
 			tsdfGlobal->integrate(poseVolume, color, depth);
 			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, iterations, voxelSize, debugMode, gridW, gridH, gridD);
 

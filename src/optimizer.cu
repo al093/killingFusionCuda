@@ -238,7 +238,8 @@ void Optimizer::getTSDFGlobalWeightsPtr(float* tsdfGlobalWeightsPtr)
 
 void Optimizer::printTimes()
 {
-	std::cout << std::endl << "Mean running times (ms): " << std::endl;
+	std::cout << std::endl << "Mean optimization time per frame: " << (m_timeFramesOptimized / (float) m_nFramesOptimized) * 1000 << "ms" << std::endl;
+	std::cout << "Mean running times (ms): " << std::endl;
 	std::cout << "- computeGradient: " << 1000*m_timeComputeGradient / (float)m_nComputeGradient << " (" << m_nComputeGradient << " iterations)" <<std::endl;
 	std::cout << "- computeHessian: " << 1000*m_timeComputeHessian / (float)m_nComputeHessian << " (" << m_nComputeHessian << " iterations)" <<std::endl;
 	std::cout << "- computeLaplacian: " << 1000*m_timeComputeLaplacian / (float)m_nComputeLaplacian << " (" << m_nComputeLaplacian << " iterations)" <<std::endl;
@@ -254,6 +255,8 @@ void Optimizer::printTimes()
 
 void Optimizer::optimize(TSDFVolume* tsdfLive)
 {
+	Timer frameTimer;
+	frameTimer.start();
 	// Initialize variables
 	float currentMaxVectorUpdate = 0.01;
 	float* tsdfLiveGrid = tsdfLive->ptrTsdf();
@@ -302,7 +305,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
     do
 	{
         ++itr;
-        if(m_debugMode) std::cout << "\nGD itr num: " << itr;
+        if(m_debugMode) std::cout << std::endl << "GD itr num: " << itr;
         
 		// Interpolate TSDF Live Frame (EXAMPLE: HOW TO INTERPOLATE PHIn DEFORMED BY PSI)
 		interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
@@ -448,15 +451,9 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         m_timeFindAbsMax += timer.get();
     	m_nFindAbsMax += 1;
 
-        if(m_debugMode) std::cout<<"| Abs Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
+        if(m_debugMode) std::cout << "| Last Max update: " << m_alpha * currentMaxVectorUpdate << std::endl;
 
 	} while ((m_alpha * currentMaxVectorUpdate) > m_maxVectorUpdateThreshold && itr < m_maxIterations);
-
-    // Print wether convergence was achieved
-    if((m_alpha * currentMaxVectorUpdate) <= m_maxVectorUpdateThreshold )
-        std::cout<< green << " GD Converged" << def << " Last max abs derivative was: " << (m_alpha * currentMaxVectorUpdate);
-    else
-        std::cout<< red << " GD Not Converged" << def << " Last max abs derivative was: " << (m_alpha * currentMaxVectorUpdate);
 
 	// Update TSDF Global using a weighted averaging scheme
 	interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
@@ -467,6 +464,20 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
     timer.end();
     m_timeAddWeightedArray += timer.get();
     m_nAddWeightedArray += 1;
+
+    // Print wether convergence was achieved
+    frameTimer.end();
+    float currentFrameOptimizationTime = frameTimer.get();
+    m_timeFramesOptimized += currentFrameOptimizationTime;
+    m_nFramesOptimized += 1;
+    if((m_alpha * currentMaxVectorUpdate) <= m_maxVectorUpdateThreshold)
+    {
+        std::cout << green << " GD Converged" << def << " (" << itr << " iterations, " << currentFrameOptimizationTime*1000.0f << "ms). Last max update: " << (m_alpha * currentMaxVectorUpdate) << std::endl;
+    }
+    else
+    {
+        std::cout << red << " GD Not Converged" << def << " (" << itr << " iterations, " << currentFrameOptimizationTime*1000.0f  << "ms). Last max update: " << (m_alpha * currentMaxVectorUpdate) << std::endl;
+    }
 
     if(m_debugMode)
     {
