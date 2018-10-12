@@ -159,14 +159,14 @@ int main(int argc, char *argv[])
     }
     std::cout << "K: " << std::endl << K << std::endl;
 
-    // create tsdf volume
+    // Create tsdf volume
     size_t gridW = 80, gridH = 80, gridD = 80;
 	float voxelSize = 0.008; 		// Voxel size in m
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(gridW*voxelSize, gridH*voxelSize, gridD*voxelSize);
     TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K, 0);
     TSDFVolume* tsdfLive;
-    //initialize the deformation to zero initially
+    // Initialize the deformation to zero initially
     float* deformationU = (float*)calloc(gridW*gridH*gridD, sizeof(float));
 	float* deformationV = (float*)calloc(gridW*gridH*gridD, sizeof(float));
 	float* deformationW = (float*)calloc(gridW*gridH*gridD, sizeof(float));
@@ -180,12 +180,12 @@ int main(int argc, char *argv[])
     
 	Optimizer* optimizer;
 
-    // create windows
+    // Create windows
     cv::namedWindow("color");
     cv::namedWindow("depth");
     cv::namedWindow("mask");
 
-    // process frames
+    // Process frames
     Mat4f poseVolume = Mat4f::Identity();
     cv::Mat color, depth, mask;
     for (size_t i = firstFrameId; i < frames; ++i)
@@ -193,17 +193,17 @@ int main(int argc, char *argv[])
         tsdfLive = new TSDFVolume(volDim, volSize, K, i);
         std::cout << "Working on frame: " << i;
 
-        // load input frame
+        // Load input frame
         if (!loadFrame(inputSequence, i, color, depth, mask))
         {
             std::cerr << " ->Frame " << i << " could not be loaded!" << std::endl;
             break;
         }
 
-        // filter depth values outside of mask
+        // Filter depth values outside of mask
         filterDepth(mask, depth);
 
-        // show input images
+        // Show input images
         cv::imshow("color", color);
         cv::imshow("depth", depth);
         cv::imshow("mask", mask);
@@ -213,10 +213,10 @@ int main(int argc, char *argv[])
         }
         
 
-        // get initial volume pose from centroid of first depth map
+        // Get initial volume pose from centroid of first depth map
         if (i == firstFrameId)
         {
-            // initial pose for volume by computing centroid of first depth/vertex map
+            // Initial pose for volume by computing centroid of first depth/vertex map
             cv::Mat vertMap;
             depthToVertexMap(K, depth, vertMap);
             Vec3f transCentroid = centroid(vertMap);
@@ -239,12 +239,11 @@ int main(int argc, char *argv[])
         	tsdfLive->integrate(poseVolume, color, depth);
             // Perform optimization
 			optimizer->optimize(tsdfLive);
-            //optimizer->testIntermediateSteps(tsdfLive);
 		}
         delete tsdfLive;
     }
     optimizer->printTimes();
-    // extract mesh using marching cubes
+    // Extract mesh using marching cubes
     std::cout << "Extracting mesh..." << std::endl;
 	float* tsdfGlobalAccumulated = (float*)calloc(gridW*gridH*gridD, sizeof(float));
 	float* tsdfGlobalWeightsAccumulated = (float*)calloc(gridW*gridH*gridD, sizeof(float));
@@ -252,7 +251,7 @@ int main(int argc, char *argv[])
 	optimizer->getTSDFGlobalWeightsPtr(tsdfGlobalWeightsAccumulated);
 	MarchingCubes mcAcc(volDim, volSize);
 	mcAcc.computeIsoSurface(tsdfGlobalAccumulated, tsdfGlobalWeightsAccumulated, tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());
-    // save mesh
+    // Save mesh
     std::cout << "Saving mesh..." << std::endl;
 	const std::string meshAccFilename = "./bin/result/mesh_acc.ply";
 	if (!mcAcc.savePly(meshAccFilename))

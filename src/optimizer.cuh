@@ -1,6 +1,8 @@
-#include <opencv2/core/core.hpp>
 #include "mat.h"
 #include "tsdf_volume.h"
+
+#include <opencv2/core/core.hpp>
+#include "cublas_v2.h"
 
 class Optimizer
 {
@@ -39,6 +41,7 @@ protected:
 	const size_t m_gridW, m_gridH, m_gridD;
 	const float m_voxelSize;
 	float m_maxVectorUpdateThreshold; 			// Threshold: 0.1mm
+	cublasHandle_t m_handle;
 
 	// Timing variables
 	float m_timeComputeGradient = 0.0f, m_timeComputeHessian = 0.0f, m_timeComputeLaplacian = 0.0f, m_timeComputeDivergence = 0.0f,
@@ -129,4 +132,3 @@ protected:
     float* m_d_dfy = NULL;
     float* m_d_dfz = NULL;
 };
-
