@@ -173,8 +173,8 @@ int main(int argc, char *argv[])
 
     for (size_t i = 0; i < gridW*gridH*gridD; i++)
     {
-        deformationU[i] = 0.0f;
-        deformationV[i] = 0.0f; 
+        deformationU[i] = 4.56f;
+        deformationV[i] = -9.87345f; 
         deformationW[i] = 0.0f;   
     }
     

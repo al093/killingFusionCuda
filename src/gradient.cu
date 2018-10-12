@@ -61,13 +61,13 @@ void computeGradient3DX(float* gradX, const float* gridIn, const size_t w, const
         return;
     }
 
-    // calculate block and grid size
+    // Calculate block and grid size
     dim3 block(32, 8, 3);
     dim3 grid = computeGrid3D(block, w, h, d);
 
-    // run cuda kernel
+    // Run cuda kernel
 	computeGradient3DXKernel <<<grid, block>>> (gradX, gridIn, w, h, d); 
-    // check for errors
+    // Check for errors
 	CUDA_CHECK;
 }
 
@@ -79,13 +79,13 @@ void computeGradient3DY(float* gradY, const float* gridIn, const size_t w, const
         return;
     }
 
-    // calculate block and grid size
+    // Calculate block and grid size
     dim3 block(32, 8, 3);
     dim3 grid = computeGrid3D(block, w, h, d);
 
-    // run cuda kernel
+    // Run cuda kernel
 	computeGradient3DYKernel <<<grid, block>>> (gradY, gridIn, w, h, d); 
-    // check for errors
+    // Check for errors
 	CUDA_CHECK;
 }
 
@@ -97,12 +97,12 @@ void computeGradient3DZ(float* gradZ, const float* gridIn, const size_t w, const
         return;
     }
 
-    // calculate block and grid size
+    // Calculate block and grid size
     dim3 block(32, 8, 3);
     dim3 grid = computeGrid3D(block, w, h, d);
 
-    // run cuda kernel
+    // Run cuda kernel
 	computeGradient3DZKernel <<<grid, block>>> (gradZ, gridIn, w, h, d); 
-    // check for errors
+    // Check for errors
 	CUDA_CHECK;
 }

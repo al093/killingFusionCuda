@@ -388,7 +388,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         m_timeComputeGradient += timer.get();
     	m_nComputeGradient += 1;
         
-        //compute motion regularizer derivative
+        // Compute motion regularizer derivative
         timer.start();
         computeMotionRegularizerDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
                                            m_d_lapU, m_d_lapV, m_d_lapW,

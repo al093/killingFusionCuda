@@ -1,7 +1,6 @@
 // ########################################################################
 // Practical Course: GPU Programming in Computer Vision
 // Technical University of Munich, Computer Vision Group
-// Cuda Functions to calculate the energy derivatives and also helper function for using 3D texture memory.
 // ########################################################################
 
 #ifndef INTERPOLATOR_H
@@ -13,16 +12,16 @@
 class Interpolator
 {
 	public:
-		Interpolator(float* h_phi, int width, int height, int depth);
+		Interpolator(float* h_grid, int width, int height, int depth);
 		~Interpolator();
 
-		cudaTextureObject_t texPhil;
-		cudaArray *cuArray_phi1;
-		void interpolate3D(float *d_phiInterpolated, const float *d_u, const float *d_v, const float *d_w, int width, int height, int depth);
+		cudaTextureObject_t texGrid;
+		cudaArray *cuArray_grid;
+		void interpolate3D(float *d_gridInterpolated, const float *d_u, const float *d_v, const float *d_w, int width, int height, int depth);
 
 	protected:
 
-		void uploadToTextureMemory(float* h_phi, int w, int h, int d);
+		void uploadToTextureMemory(float* d_grid, int w, int h, int d);
 		void freeTextureMemory();
 };
 #endif
