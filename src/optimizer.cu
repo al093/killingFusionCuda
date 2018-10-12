@@ -331,6 +331,9 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         interpHessYZ->interpolate3D(m_d_hessYZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         interpHessZZ->interpolate3D(m_d_hessZZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 
+        // Compute current mask
+        computeMask(m_d_mask, m_d_tsdfLiveDeform, m_gridW, m_gridH, m_gridD);
+
         // Set m_d_energyDu/v/w intially to zero
         cudaMemset(m_d_energyDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
         cudaMemset(m_d_energyDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -407,8 +410,8 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
             std::cout<< "| Data Term Energy: " << dataEnergy;
 
             float levelSetEnergy = 0.0;
-            computeLevelSetEnergy(&levelSetEnergy, m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_gridW, m_gridH, m_gridD);
-            std::cout<< "| Level Set Energy: " << levelSetEnergy;
+            computeLevelSetEnergy(&levelSetEnergy, m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_d_mask, m_gridW, m_gridH, m_gridD);
+            std::cout<< "| Level Set Energy: " << 0.05*levelSetEnergy;
 
             // Find the energy of the Killing term
             computeGradient(m_d_dux, m_d_duy, m_d_duz, m_d_deformationFieldU, m_gridW, m_gridH, m_gridD);
@@ -499,12 +502,9 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
 
         cudaMemcpy(sdf, m_d_tsdfLiveDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-
         cudaMemcpy(sdfWeights, m_d_tsdfLiveWeightsDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 
-
         mc.computeIsoSurface(sdf, sdfWeights, tsdfLive->ptrColorR(), tsdfLive->ptrColorG(), tsdfLive->ptrColorB());
-
         std::string meshFilename = "./bin/result/mesh_warped_" + std::to_string(tsdfLive->getFrameNumber()) + ".ply";
 
         if (!mc.savePly(meshFilename))

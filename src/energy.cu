@@ -30,7 +30,7 @@ void computeDataEnergyKernel(float *d_dataEnergyArray,
 __global__
 void computeLevelSetEnergyKernel(float *d_levelSetEnergyArray,
                                  const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
-                                 const size_t width, const size_t height, const size_t depth)
+                                 const bool* d_mask, const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
     int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -39,8 +39,15 @@ void computeLevelSetEnergyKernel(float *d_levelSetEnergyArray,
     if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
-        float norm = sqrt(d_gradPhiNDeformedX[idx]*d_gradPhiNDeformedX[idx] + d_gradPhiNDeformedY[idx]*d_gradPhiNDeformedY[idx] + d_gradPhiNDeformedZ[idx]*d_gradPhiNDeformedZ[idx]);
-        d_levelSetEnergyArray[idx] = 0.5 * (norm - 1) * (norm - 1);
+        if (d_mask[idx])
+        {
+            float norm = sqrt(d_gradPhiNDeformedX[idx]*d_gradPhiNDeformedX[idx] + d_gradPhiNDeformedY[idx]*d_gradPhiNDeformedY[idx] + d_gradPhiNDeformedZ[idx]*d_gradPhiNDeformedZ[idx]);
+            d_levelSetEnergyArray[idx] = 0.5 * (norm/0.006 - 1.0) * (norm/0.006 - 1.0);
+        }
+        else
+        {
+            d_levelSetEnergyArray[idx] = 0.0f;
+        }
     }
 }
 
@@ -77,9 +84,13 @@ void computeMaskKernel(bool *d_mask, const float *d_phiN,
     if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
-        if(d_phiN[idx] < 1.0 && d_phiN[idx] > -1.0)
+        if(d_phiN[idx] < 0.05 && d_phiN[idx] > -0.05)
         {
             d_mask[idx] = true;
+        }
+        else
+        {
+            d_mask[idx] = false;
         }
     }
 }
@@ -111,7 +122,7 @@ void computeDataEnergy(float *dataEnergy, const float *d_phiNDeformed, const flo
 
 void computeLevelSetEnergy(float *levelSetEnergy,
                            const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
-                           const size_t width, const size_t height, const size_t depth)
+                           const bool* d_mask, const size_t width, const size_t height, const size_t depth)
 {
     float* d_levelSetEnergyArray;
     cudaMalloc(&d_levelSetEnergyArray, (width * height * depth) * sizeof(float)); CUDA_CHECK;
@@ -121,7 +132,7 @@ void computeLevelSetEnergy(float *levelSetEnergy,
 
     computeLevelSetEnergyKernel <<<grid, blockSize>>> (d_levelSetEnergyArray, 
                                                        d_gradPhiNDeformedX, d_gradPhiNDeformedY, d_gradPhiNDeformedZ,
-                                                       width, height, depth);
+                                                       d_mask, width, height, depth);
     CUDA_CHECK;
 
     // Create cublas handle

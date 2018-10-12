@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 
     // Create tsdf volume
     size_t gridW = 80, gridH = 80, gridD = 80;
-	float voxelSize = 0.008; 		// Voxel size in m
+	float voxelSize = 0.006; 		// Voxel size in m
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(gridW*voxelSize, gridH*voxelSize, gridD*voxelSize);
     TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K, 0);
@@ -173,8 +173,8 @@ int main(int argc, char *argv[])
 
     for (size_t i = 0; i < gridW*gridH*gridD; i++)
     {
-        deformationU[i] = 4.56f;
-        deformationV[i] = -9.87345f; 
+        deformationU[i] = 0.0f;
+        deformationV[i] = 0.0f; 
         deformationW[i] = 0.0f;   
     }
     

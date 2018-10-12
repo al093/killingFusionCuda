@@ -42,16 +42,16 @@ void computeLevelSetDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *
     int y = threadIdx.y + blockIdx.y*blockDim.y;
     int z = threadIdx.z + blockIdx.z*blockDim.z;
 
-    if(x<width && y<height && z<depth)
+    if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
 
-        //if(d_mask[idx])
+        if(d_mask[idx])
         {
             float gradNorm = d_gradPhiNDeformedX[idx]*d_gradPhiNDeformedX[idx] + d_gradPhiNDeformedY[idx]*d_gradPhiNDeformedY[idx] + d_gradPhiNDeformedZ[idx]*d_gradPhiNDeformedZ[idx];
             gradNorm = sqrt(gradNorm);
 
-            float scalar = ws*(gradNorm - 1.0)/(gradNorm+0.00001);
+            float scalar = ws*(gradNorm/0.006 - 1.0) / (gradNorm/0.006 + 0.00001);
 
             d_dEdataU[idx] += scalar*(d_hessPhiXX[idx]*d_gradPhiNDeformedX[idx] + d_hessPhiXY[idx]*d_gradPhiNDeformedY[idx] + d_hessPhiXZ[idx]*d_gradPhiNDeformedZ[idx]);
             d_dEdataV[idx] += scalar*(d_hessPhiXY[idx]*d_gradPhiNDeformedX[idx] + d_hessPhiYY[idx]*d_gradPhiNDeformedY[idx] + d_hessPhiYZ[idx]*d_gradPhiNDeformedZ[idx]);
@@ -74,9 +74,10 @@ void computeMotionRegularizerDerivativeKernel(float *d_dEdataU, float *d_dEdataV
     if(x<width && y<height && z<depth)
     {
         size_t idx = x + y*width + z*width*height;
-        d_dEdataU[idx] += -2.0*wk*d_lapU[idx] -2.0*wk*gamma*d_divX[idx];
-        d_dEdataV[idx] += -2.0*wk*d_lapV[idx] -2.0*wk*gamma*d_divY[idx];
-        d_dEdataW[idx] += -2.0*wk*d_lapW[idx] -2.0*wk*gamma*d_divZ[idx];
+        float scalar = 1.0;
+        d_dEdataU[idx] += scalar*((-2.0*wk*d_lapU[idx] -2.0*wk*gamma*d_divX[idx]));
+        d_dEdataV[idx] += scalar*((-2.0*wk*d_lapV[idx] -2.0*wk*gamma*d_divY[idx]));
+        d_dEdataW[idx] += scalar*((-2.0*wk*d_lapW[idx] -2.0*wk*gamma*d_divZ[idx]));
     }
 }
 

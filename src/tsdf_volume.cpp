@@ -88,7 +88,7 @@ float TSDFVolume::truncate(float sdf) const
         tsdf = m_delta;
     else if (tsdf < -m_delta)
         tsdf = -m_delta;
-    return tsdf * m_deltaInv;   // normalize tsdf value to interval [-1.0,...,1.0]
+    return tsdf;// * m_deltaInv;   // normalize tsdf value to interval [-1.0,...,1.0]
 }
 
 
