@@ -87,10 +87,10 @@ Vec3f centroid(const cv::Mat &vertexMap)
 
 int main(int argc, char *argv[])
 {
-    // default input sequence in folder
+    // Default input sequence in folder
     std::string dataFolder = std::string(STR(KILLINGFUSION_SOURCE_DIR)) + "/data/";
 
-    // parse command line parameters
+    // Parse command line parameters
     const char *params = {
         "{i|input| |input rgb-d sequence}"
         "{f|frames|10000|number of frames to process (0=all)}"
@@ -104,22 +104,20 @@ int main(int argc, char *argv[])
     };
     cv::CommandLineParser cmd(argc, argv, params);
 
-    // input sequence
-    // download from http://campar.in.tum.de/personal/slavcheva/deformable-dataset/index.html
+    // Input sequence
+    // Download from http://campar.in.tum.de/personal/slavcheva/deformable-dataset/index.html
     std::string inputSequence = cmd.get<std::string>("input");
     if (inputSequence.empty())
     {
         inputSequence = dataFolder;
-        //std::cerr << "No input sequence specified!" << std::endl;
-        //return 1;
     }
     std::cout << "input sequence: " << inputSequence << std::endl;
 
-    // number of frames to process
+    // Number of frames to process
     size_t frames = (size_t)cmd.get<int>("frames");
     std::cout << "# frames: " << frames << std::endl;
 
-    // max number of GD iterations
+    // Max number of GD iterations
     size_t iterations = (size_t)cmd.get<int>("iterations");
     std::cout << "iterations: " << iterations << std::endl;
 

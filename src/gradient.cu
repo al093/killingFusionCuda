@@ -49,7 +49,7 @@ void computeGradient3DZKernel(float* gradZ, const float* gridIn, const size_t w,
 		size_t indVoxel = sliceSize*z + XYShift;
 		size_t indNextZ = sliceSize*min(z+1, (int) d-1) + XYShift;
 		size_t indPreviousZ = sliceSize*max(z-1, 0) + XYShift;
-		gradZ[indVoxel] = (gridIn[indNextZ] - gridIn[indPreviousZ]) / (2.0 );
+		gradZ[indVoxel] = (gridIn[indNextZ] - gridIn[indPreviousZ]) / (2.0);
 	}
 }
 

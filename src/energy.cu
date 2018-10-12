@@ -42,7 +42,7 @@ void computeLevelSetEnergyKernel(float *d_levelSetEnergyArray,
         if (d_mask[idx])
         {
             float norm = sqrt(d_gradPhiNDeformedX[idx]*d_gradPhiNDeformedX[idx] + d_gradPhiNDeformedY[idx]*d_gradPhiNDeformedY[idx] + d_gradPhiNDeformedZ[idx]*d_gradPhiNDeformedZ[idx]);
-            d_levelSetEnergyArray[idx] = 0.5 * (norm/0.006 - 1.0) * (norm/0.006 - 1.0);
+            d_levelSetEnergyArray[idx] = 0.5 * (norm - 1.0) * (norm - 1.0);
         }
         else
         {

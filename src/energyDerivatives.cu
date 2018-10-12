@@ -51,7 +51,7 @@ void computeLevelSetDerivativeKernel(float *d_dEdataU, float *d_dEdataV, float *
             float gradNorm = d_gradPhiNDeformedX[idx]*d_gradPhiNDeformedX[idx] + d_gradPhiNDeformedY[idx]*d_gradPhiNDeformedY[idx] + d_gradPhiNDeformedZ[idx]*d_gradPhiNDeformedZ[idx];
             gradNorm = sqrt(gradNorm);
 
-            float scalar = ws*(gradNorm/0.006 - 1.0) / (gradNorm/0.006 + 0.00001);
+            float scalar = ws*(gradNorm - 1.0) / (gradNorm + 0.00001);
 
             d_dEdataU[idx] += scalar*(d_hessPhiXX[idx]*d_gradPhiNDeformedX[idx] + d_hessPhiXY[idx]*d_gradPhiNDeformedY[idx] + d_hessPhiXZ[idx]*d_gradPhiNDeformedZ[idx]);
             d_dEdataV[idx] += scalar*(d_hessPhiXY[idx]*d_gradPhiNDeformedX[idx] + d_hessPhiYY[idx]*d_gradPhiNDeformedY[idx] + d_hessPhiYZ[idx]*d_gradPhiNDeformedZ[idx]);
@@ -106,9 +106,9 @@ void addWeightedArrayKernel(float* arrayOut, float* weightOut, const float* arra
     {
         size_t idx = x + y*width + z*width*height;
         float sumWeights = weight1[idx] + weight2[idx];
-        if (arrayIn1[idx] == -1 && arrayIn2[idx] == -1)
+        if (sumWeights < 1e-6)
         {
-            arrayOut[idx] = -1;
+            arrayOut[idx] = 0.05;
         }
         else
         {
@@ -175,7 +175,7 @@ void computeLevelSetDerivative(float *d_dEdataU, float *d_dEdataV, float *d_dEda
 {
     dim3 blockSize(32, 8, 1);
     dim3 grid = computeGrid3D(blockSize, width, height, depth);
-    
+
     computeLevelSetDerivativeKernel <<<grid, blockSize>>> (d_dEdataU, d_dEdataV, d_dEdataW, 
                                                            d_hessPhiXX, d_hessPhiXY, d_hessPhiXZ,
                                                            d_hessPhiYY, d_hessPhiYZ, d_hessPhiZZ,

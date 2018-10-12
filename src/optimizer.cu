@@ -266,7 +266,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	Timer frameTimer;
 	frameTimer.start();
 	// Initialize variables
-	float currentMaxVectorUpdate = 0.01;
+	float currentMaxVectorUpdate;
 	float* tsdfLiveGrid = tsdfLive->ptrTsdf();
 	float* tsdfLiveWeights = tsdfLive->ptrTsdfWeights();
 	Timer timer;
@@ -307,8 +307,35 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 											HESSIAN OF PHIn IS: m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ
 	*/
 
-    if (m_debugMode) std::cout<< "Deforming SDF..." << std::endl;
+    if (m_debugMode)
+    {
+    	std::cout << std::endl << "Deforming SDF..." << std::endl;
+    }
+    
+    // Compute current mask
+    computeMask(m_d_mask, m_d_tsdfLiveDeform, m_gridW, m_gridH, m_gridD);
     size_t itr = 0;
+
+    // TEST
+    float* auxX = new float[m_gridW * m_gridH * m_gridD];
+    float* auxY = new float[m_gridW * m_gridH * m_gridD];
+    float* auxZ = new float[m_gridW * m_gridH * m_gridD];
+    cudaMemcpy(auxX, m_d_sdfDx, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+    cudaMemcpy(auxY, m_d_sdfDy, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+	cudaMemcpy(auxZ, m_d_sdfDz, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+	for (int i = 0; i < m_gridW * m_gridH * m_gridD; i++)
+    {
+    	float norm = sqrt(auxX[i]*auxX[i] + auxY[i]*auxY[i] + auxZ[i]*auxZ[i]);
+    	if (norm != 0)
+    	{
+    		//std::cout << norm << std::endl;
+    	}
+    }
+    // TEST
+
+
+
+
 
     do
 	{
@@ -331,8 +358,6 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         interpHessYZ->interpolate3D(m_d_hessYZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         interpHessZZ->interpolate3D(m_d_hessZZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 
-        // Compute current mask
-        computeMask(m_d_mask, m_d_tsdfLiveDeform, m_gridW, m_gridH, m_gridD);
 
         // Set m_d_energyDu/v/w intially to zero
         cudaMemset(m_d_energyDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -411,7 +436,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
             float levelSetEnergy = 0.0;
             computeLevelSetEnergy(&levelSetEnergy, m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_d_mask, m_gridW, m_gridH, m_gridD);
-            std::cout<< "| Level Set Energy: " << 0.05*levelSetEnergy;
+            std::cout<< "| Level Set Energy: " << levelSetEnergy;
 
             // Find the energy of the Killing term
             computeGradient(m_d_dux, m_d_duy, m_d_duz, m_d_deformationFieldU, m_gridW, m_gridH, m_gridD);
