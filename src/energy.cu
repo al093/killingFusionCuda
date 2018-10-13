@@ -13,6 +13,7 @@
 __global__
 void computeDataEnergyKernel(float *d_dataEnergyArray, 
                              const float *d_phiNDeformed, const float *d_phiGlobal,
+                             const bool* d_mask,
                              const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
@@ -22,15 +23,23 @@ void computeDataEnergyKernel(float *d_dataEnergyArray,
     if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
-        float diff = d_phiNDeformed[idx] - d_phiGlobal[idx];
-        d_dataEnergyArray[idx] = diff * diff;
+        //if(d_mask[idx])
+        {
+            float diff = d_phiNDeformed[idx] - d_phiGlobal[idx];
+            d_dataEnergyArray[idx] = diff * diff;
+        }
+        //else
+        //{
+        //    d_dataEnergyArray[idx] = 0.0;
+        //}
     }
 }
 
 __global__
 void computeLevelSetEnergyKernel(float *d_levelSetEnergyArray,
                                  const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
-                                 const bool* d_mask, const size_t width, const size_t height, const size_t depth)
+                                 const bool* d_mask, const float ws, const float tsdfGradScale, const float voxelSize,
+                                 const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
     int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -43,7 +52,7 @@ void computeLevelSetEnergyKernel(float *d_levelSetEnergyArray,
         if (d_mask[idx])
         {
             float norm = sqrt(d_gradPhiNDeformedX[idx]*d_gradPhiNDeformedX[idx] + d_gradPhiNDeformedY[idx]*d_gradPhiNDeformedY[idx] + d_gradPhiNDeformedZ[idx]*d_gradPhiNDeformedZ[idx]);
-            d_levelSetEnergyArray[idx] = 0.5 * (norm - 1.0) * (norm - 1.0);
+            d_levelSetEnergyArray[idx] = ws * 0.5 * ((norm/voxelSize) - (1.0/tsdfGradScale)) * ((norm/voxelSize) - (1.0/tsdfGradScale));
         }
         else
         {
@@ -57,6 +66,7 @@ void computeKillingEnergyKernel(float *d_killingEnergyArray, const float gamma,
                                 const float* d_dux, const float* d_duy, const float* d_duz,
                                 const float* d_dvx, const float* d_dvy, const float* d_dvz,
                                 const float* d_dwx, const float* d_dwy, const float* d_dwz,
+                                const bool* d_mask, const float wk,
                                 const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
@@ -66,11 +76,19 @@ void computeKillingEnergyKernel(float *d_killingEnergyArray, const float gamma,
     if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
-        d_killingEnergyArray[idx] = (1.0+gamma)*(d_dux[idx]*d_dux[idx] + d_dvy[idx]*d_dvy[idx] + d_dwz[idx]*d_dwz[idx])+
-                                      d_duy[idx]*d_duy[idx] + d_duz[idx]*d_duz[idx] +
-                                      d_dvx[idx]*d_dvx[idx] + d_dvz[idx]*d_dvz[idx] +
-                                      d_dwx[idx]*d_dwx[idx] + d_dwy[idx]*d_dwy[idx] +
-                                      2.0*gamma*(d_duy[idx]*d_dvx[idx] + d_duz[idx]*d_dwx[idx] + d_dwy[idx]*d_dvz[idx]);
+        //if(d_mask[idx])
+        {
+            d_killingEnergyArray[idx] = (1.0+gamma)*(d_dux[idx]*d_dux[idx] + d_dvy[idx]*d_dvy[idx] + d_dwz[idx]*d_dwz[idx])+
+                                          d_duy[idx]*d_duy[idx] + d_duz[idx]*d_duz[idx] +
+                                          d_dvx[idx]*d_dvx[idx] + d_dvz[idx]*d_dvz[idx] +
+                                          d_dwx[idx]*d_dwx[idx] + d_dwy[idx]*d_dwy[idx] +
+                                          2.0*gamma*(d_duy[idx]*d_dvx[idx] + d_duz[idx]*d_dwx[idx] + d_dwy[idx]*d_dvz[idx]);
+            d_killingEnergyArray[idx] = wk*d_killingEnergyArray[idx];
+        }
+        //else
+        //{
+        //    d_killingEnergyArray[idx] = 0.0f;
+        //}
     }
 }
 
@@ -85,7 +103,7 @@ void computeMaskKernel(bool *d_mask, const float *d_phiN,
     if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
-        if(d_phiN[idx] < 0.05 && d_phiN[idx] > -0.05)
+        if(d_phiN[idx] < 1.0 && d_phiN[idx] > -1.0)
         {
             d_mask[idx] = true;
         }
@@ -97,6 +115,7 @@ void computeMaskKernel(bool *d_mask, const float *d_phiN,
 }
 
 void computeDataEnergy(float *dataEnergy, const float *d_phiNDeformed, const float *d_phiGlobal,
+                       const bool* d_mask,
                        const size_t width, const size_t height, const size_t depth)
 {
     float* d_dataEnergyArray;
@@ -107,6 +126,7 @@ void computeDataEnergy(float *dataEnergy, const float *d_phiNDeformed, const flo
 
     computeDataEnergyKernel <<<grid, blockSize>>> (d_dataEnergyArray, 
                                                    d_phiNDeformed, d_phiGlobal,
+                                                   d_mask,
                                                    width, height, depth);
     CUDA_CHECK;
 
@@ -123,7 +143,8 @@ void computeDataEnergy(float *dataEnergy, const float *d_phiNDeformed, const flo
 
 void computeLevelSetEnergy(float *levelSetEnergy,
                            const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
-                           const bool* d_mask, const size_t width, const size_t height, const size_t depth)
+                           const bool* d_mask, const float ws, const float tsdfGradScale, const float voxelSize,
+                           const size_t width, const size_t height, const size_t depth)
 {
     float* d_levelSetEnergyArray;
     cudaMalloc(&d_levelSetEnergyArray, (width * height * depth) * sizeof(float)); CUDA_CHECK;
@@ -133,7 +154,8 @@ void computeLevelSetEnergy(float *levelSetEnergy,
 
     computeLevelSetEnergyKernel <<<grid, blockSize>>> (d_levelSetEnergyArray, 
                                                        d_gradPhiNDeformedX, d_gradPhiNDeformedY, d_gradPhiNDeformedZ,
-                                                       d_mask, width, height, depth);
+                                                       d_mask, ws, tsdfGradScale, voxelSize,
+                                                       width, height, depth);
     CUDA_CHECK;
 
     // Create cublas handle
@@ -154,6 +176,7 @@ void computeKillingEnergy(float *killingEnergy, const float gamma,
                           const float* d_dux, const float* d_duy, const float* d_duz,
                           const float* d_dvx, const float* d_dvy, const float* d_dvz,
                           const float* d_dwx, const float* d_dwy, const float* d_dwz,
+                          const bool* d_mask, const float wk,
                           const size_t width, const size_t height, const size_t depth)
 {
     float* d_killingEnergyArray;
@@ -166,6 +189,7 @@ void computeKillingEnergy(float *killingEnergy, const float gamma,
                                                       d_dux, d_duy, d_duz,
                                                       d_dvx, d_dvy, d_dvz,
                                                       d_dwx, d_dwy, d_dwz,
+                                                      d_mask, wk,
                                                       width, height, depth);
     CUDA_CHECK;
 

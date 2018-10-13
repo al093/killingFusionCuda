@@ -26,7 +26,8 @@ Color::Modifier def(Color::FG_DEFAULT);
 
 Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, 
                      const float alpha, const float wk, const float ws, const float gamma, const size_t maxIterations,
-                     const float voxelSize, const bool debugMode, const size_t gridW, const size_t gridH, const size_t gridD) :
+                     const float voxelSize, const float tsdfGradScale,
+                     const bool debugMode, const size_t gridW, const size_t gridH, const size_t gridD) :
 	m_tsdfGlobal(tsdfGlobal),
     m_deformationFieldU(initialDeformationU),
     m_deformationFieldV(initialDeformationV),
@@ -40,7 +41,8 @@ Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* 
 	m_debugMode(debugMode),
 	m_gridW(gridW), 
 	m_gridH(gridH),
-	m_gridD(gridD)
+    m_gridD(gridD),
+    m_tsdfGradScale(tsdfGradScale)
 {
 	m_maxVectorUpdateThreshold = 0.1 / (m_voxelSize * 1000.0);
     allocateMemoryInDevice();
@@ -367,7 +369,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         // Compute data term derivatives
         timer.start();
         computeDataTermDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
-                                  m_d_tsdfLiveDeform, m_d_tsdfGlobal,
+                                  m_d_tsdfLiveDeform, m_d_tsdfGlobal, m_d_mask,
                                   m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
                                   m_gridW, m_gridH, m_gridD);
         timer.end();
@@ -380,7 +382,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
                                   m_d_hessXXDeform, m_d_hessXYDeform, m_d_hessXZDeform,
                                   m_d_hessYYDeform, m_d_hessYZDeform, m_d_hessZZDeform,
                                   m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
-                                  m_d_mask, m_ws,
+                                  m_d_mask, m_ws, m_tsdfGradScale, m_voxelSize,
                                   m_gridW, m_gridH, m_gridD);
 		timer.end();
         m_timeComputeLevelSetDerivative += timer.get();
@@ -422,7 +424,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         computeMotionRegularizerDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
                                            m_d_lapU, m_d_lapV, m_d_lapW,
                                            m_d_divX, m_d_divY, m_d_divZ,
-                                           m_wk, m_gamma,
+                                           m_d_mask, m_wk, m_gamma,
                                            m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeComputeMotionRegularizerDerivative += timer.get();
@@ -432,14 +434,16 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         {
         	// Compute all energy terms
             float dataEnergy = 0.0;
-            computeDataEnergy(&dataEnergy, m_d_tsdfLiveDeform, m_d_tsdfGlobal, m_gridW, m_gridH, m_gridD);
+            computeDataEnergy(&dataEnergy, m_d_tsdfLiveDeform, m_d_tsdfGlobal, m_d_mask, m_gridW, m_gridH, m_gridD);
             std::cout<< "| Data Term Energy: " << dataEnergy;
             dataEnergyArr[itr] = dataEnergy;
 
             float levelSetEnergy = 0.0;
-            computeLevelSetEnergy(&levelSetEnergy, m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_d_mask, m_gridW, m_gridH, m_gridD);
+            computeLevelSetEnergy(&levelSetEnergy, m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform,
+                                                   m_d_mask, m_ws, m_tsdfGradScale, m_voxelSize,
+                                                   m_gridW, m_gridH, m_gridD);
             std::cout<< "| Level Set Energy: " << levelSetEnergy;
-            levelSetEnergyArr[itr] = m_ws*levelSetEnergy;
+            levelSetEnergyArr[itr] = levelSetEnergy;
             
             // Find the energy of the Killing term
             computeGradient(m_d_dux, m_d_duy, m_d_duz, m_d_deformationFieldU, m_gridW, m_gridH, m_gridD);
@@ -451,9 +455,10 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
                                   m_d_dux, m_d_duy, m_d_duz,
                                   m_d_dvx, m_d_dvy, m_d_dvz,
                                   m_d_dwx, m_d_dwy, m_d_dwz,
+                                  m_d_mask, m_wk,
                                   m_gridW, m_gridH, m_gridD);
             std::cout<< "| Killing Energy: " << killingEnergy;
-            killingEnergyArr[itr] = m_wk*killingEnergy;
+            killingEnergyArr[itr] = killingEnergy;
 
             totalEnergyArr[itr] = dataEnergyArr[itr] + levelSetEnergyArr[itr] + killingEnergyArr[itr];
         }

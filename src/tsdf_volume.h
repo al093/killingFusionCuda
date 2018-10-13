@@ -8,7 +8,7 @@ class TSDFVolume
 {
 public:
 
-    TSDFVolume(const Vec3i &dimensions, const Vec3f &size, const Mat3f &K, size_t frameNumber);
+    TSDFVolume(const Vec3i &dimensions, const Vec3f &size, const Mat3f &K, const float truncationDistance, size_t frameNumber);
     ~TSDFVolume();
 
     bool init();

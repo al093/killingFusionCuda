@@ -145,6 +145,9 @@ int main(int argc, char *argv[])
     float gamma = (float)cmd.get<float>("gamma");
     std::cout << "gamma: " << gamma << std::endl;
 
+    //Trunction distance for the TSDF, which is also the scale for the tsdf gradients
+    const float tsdfTruncationDistance = 0.05f;
+
     // Initialize cuda context
     cudaDeviceSynchronize(); CUDA_CHECK;
 
@@ -159,10 +162,10 @@ int main(int argc, char *argv[])
 
     // Create tsdf volume
     size_t gridW = 80, gridH = 80, gridD = 80;
-	float voxelSize = 0.006; 		// Voxel size in m
+    float voxelSize = 0.006;        // Voxel size in m
     Vec3i volDim(gridW, gridH, gridD);
     Vec3f volSize(gridW*voxelSize, gridH*voxelSize, gridD*voxelSize);
-    TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K, 0);
+    TSDFVolume* tsdfGlobal = new TSDFVolume(volDim, volSize, K, tsdfTruncationDistance, 0);
     TSDFVolume* tsdfLive;
     // Initialize the deformation to zero initially
     float* deformationU = (float*)calloc(gridW*gridH*gridD, sizeof(float));
@@ -188,7 +191,7 @@ int main(int argc, char *argv[])
     cv::Mat color, depth, mask;
     for (size_t i = firstFrameId; i <= lastFrameId; ++i)
     {
-        tsdfLive = new TSDFVolume(volDim, volSize, K, i);
+        tsdfLive = new TSDFVolume(volDim, volSize, K, tsdfTruncationDistance, i);
         std::cout << "Working on frame: " << i;
 
         // Load input frame
@@ -221,7 +224,7 @@ int main(int argc, char *argv[])
             poseVolume.topRightCorner<3,1>() = transCentroid;
             std::cout << std::endl << "pose centroid" << std::endl << poseVolume << std::endl;
 			tsdfGlobal->integrate(poseVolume, color, depth);
-			optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gamma, iterations, voxelSize, debugMode, gridW, gridH, gridD);
+            optimizer = new Optimizer(tsdfGlobal, deformationU, deformationV, deformationW, alpha, wk, ws, gamma, iterations, voxelSize, tsdfTruncationDistance, debugMode, gridW, gridH, gridD);
 
 			MarchingCubes mc(volDim, volSize);
     		mc.computeIsoSurface(tsdfGlobal->ptrTsdf(), tsdfGlobal->ptrTsdfWeights(), tsdfGlobal->ptrColorR(), tsdfGlobal->ptrColorG(), tsdfGlobal->ptrColorB());

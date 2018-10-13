@@ -63,4 +63,4 @@ if saveImg:
     imageName = resultsDir + str(figureName.replace(".txt", "_")) + str(frameNumber)+ ".png"
     plt.savefig(imageName, format='png', dpi=1000)
 
-# plt.show()
+plt.show()

@@ -9,8 +9,8 @@ class Optimizer
 public:
 
     Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* initialDeformationV, float* initialDeformationW, const float alpha,
-    		  const float wk, const float ws, const float gamma, const size_t maxIterations, const float voxelSize, const bool debugMode,
-    		  const size_t gridW, const size_t gridH, const size_t gridD);
+              const float wk, const float ws, const float gamma, const size_t maxIterations, const float voxelSize, const float tsdfGradScale,
+              const bool debugMode,const size_t gridW, const size_t gridH, const size_t gridD);
     ~Optimizer();
 
 	void getTSDFGlobalPtr(float* tsdfGlobalPtr);
@@ -39,14 +39,15 @@ protected:
 	const size_t m_maxIterations;
 	const bool m_debugMode;
 	const size_t m_gridW, m_gridH, m_gridD;
-	const float m_voxelSize;
+    const float m_voxelSize;
+    const float m_tsdfGradScale;
 	float m_maxVectorUpdateThreshold; 			// Threshold: 0.1mm
 	cublasHandle_t m_handle;
 
 	// Timing variables
 	float m_timeComputeGradient = 0.0f, m_timeComputeHessian = 0.0f, m_timeComputeLaplacian = 0.0f, m_timeComputeDivergence = 0.0f,
 		   m_timeComputeDataTermDerivative = 0.0f, m_timeComputeLevelSetDerivative = 0.0f, m_timeComputeMotionRegularizerDerivative = 0.0f,
-		   m_timeAddArray = 0.0f, m_timeComputeMagnitude = 0.0f, m_timeFindAbsMax = 0.0f, m_timeAddWeightedArray = 0.0f, m_timeFramesOptimized = 0.0f;
+           m_timeAddArray = 0.0f, m_timeComputeMagnitude = 0.0f, m_timeFindAbsMax = 0.0f, m_timeAddWeightedArray = 0.0f, m_timeFramesOptimized = 0.0f;
 	size_t m_nComputeGradient = 0, m_nComputeHessian = 0, m_nComputeLaplacian = 0, m_nComputeDivergence = 0,
 		   m_nComputeDataTermDerivative = 0, m_nComputeLevelSetDerivative = 0, m_nComputeMotionRegularizerDerivative = 0,
 		   m_nAddArray = 0, m_nComputeMagnitude = 0, m_nFindAbsMax = 0, m_nAddWeightedArray = 0, m_nFramesOptimized = 0;
