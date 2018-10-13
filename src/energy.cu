@@ -19,27 +19,36 @@ void computeDataEnergyKernel(float *d_dataEnergyArray,
     int y = threadIdx.y + blockIdx.y*blockDim.y;
     int z = threadIdx.z + blockIdx.z*blockDim.z;
 
-    if(x<width && y<height && z<depth)
+    if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
-        d_dataEnergyArray[idx] = pow((d_phiNDeformed[idx] - d_phiGlobal[idx]),2);
+        float diff = d_phiNDeformed[idx] - d_phiGlobal[idx];
+        d_dataEnergyArray[idx] = diff * diff;
     }
 }
 
 __global__
 void computeLevelSetEnergyKernel(float *d_levelSetEnergyArray,
                                  const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
-                                 const size_t width, const size_t height, const size_t depth)
+                                 const bool* d_mask, const size_t width, const size_t height, const size_t depth)
 {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
     int y = threadIdx.y + blockIdx.y*blockDim.y;
     int z = threadIdx.z + blockIdx.z*blockDim.z;
 
-    if(x<width && y<height && z<depth)
+    if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
-        float norm = sqrt(pow(d_gradPhiNDeformedX[idx], 2) + pow(d_gradPhiNDeformedY[idx], 2) + pow(d_gradPhiNDeformedZ[idx], 2));
-        d_levelSetEnergyArray[idx] = 0.5 * pow((norm - 1.0/0.05), 2);
+
+        if (d_mask[idx])
+        {
+            float norm = sqrt(d_gradPhiNDeformedX[idx]*d_gradPhiNDeformedX[idx] + d_gradPhiNDeformedY[idx]*d_gradPhiNDeformedY[idx] + d_gradPhiNDeformedZ[idx]*d_gradPhiNDeformedZ[idx]);
+            d_levelSetEnergyArray[idx] = 0.5 * (norm - 1.0) * (norm - 1.0);
+        }
+        else
+        {
+            d_levelSetEnergyArray[idx] = 0.0f;
+        }
     }
 }
 
@@ -54,13 +63,13 @@ void computeKillingEnergyKernel(float *d_killingEnergyArray, const float gamma,
     int y = threadIdx.y + blockIdx.y*blockDim.y;
     int z = threadIdx.z + blockIdx.z*blockDim.z;
 
-    if(x<width && y<height && z<depth)
+    if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
-        d_killingEnergyArray[idx] = (1.0+gamma)*(pow(d_dux[idx],2) + pow(d_dvy[idx],2) + pow(d_dwz[idx],2))+
-                                      pow(d_duy[idx],2) + pow(d_duz[idx],2) +
-                                      pow(d_dvx[idx],2) + pow(d_dvz[idx],2) +
-                                      pow(d_dwx[idx],2) + pow(d_dwy[idx],2) +
+        d_killingEnergyArray[idx] = (1.0+gamma)*(d_dux[idx]*d_dux[idx] + d_dvy[idx]*d_dvy[idx] + d_dwz[idx]*d_dwz[idx])+
+                                      d_duy[idx]*d_duy[idx] + d_duz[idx]*d_duz[idx] +
+                                      d_dvx[idx]*d_dvx[idx] + d_dvz[idx]*d_dvz[idx] +
+                                      d_dwx[idx]*d_dwx[idx] + d_dwy[idx]*d_dwy[idx] +
                                       2.0*gamma*(d_duy[idx]*d_dvx[idx] + d_duz[idx]*d_dwx[idx] + d_dwy[idx]*d_dvz[idx]);
     }
 }
@@ -73,11 +82,17 @@ void computeMaskKernel(bool *d_mask, const float *d_phiN,
     int y = threadIdx.y + blockIdx.y*blockDim.y;
     int z = threadIdx.z + blockIdx.z*blockDim.z;
 
-    if(x<width && y<height && z<depth)
+    if(x < width && y < height && z < depth)
     {
         size_t idx = x + y*width + z*width*height;
-        if(d_phiN[idx] < 1.0 && d_phiN[idx] > -1.0 )
+        if(d_phiN[idx] < 0.05 && d_phiN[idx] > -0.05)
+        {
             d_mask[idx] = true;
+        }
+        else
+        {
+            d_mask[idx] = false;
+        }
     }
 }
 
@@ -95,20 +110,20 @@ void computeDataEnergy(float *dataEnergy, const float *d_phiNDeformed, const flo
                                                    width, height, depth);
     CUDA_CHECK;
 
-    // create cublas handle
+    // Create cublas handle
     cublasHandle_t handle;
     cublasCreate(&handle);
 
-    //calculate the sum of the energy
+    // Calculate the sum of the energy
     cublasSasum(handle, width*height*depth, d_dataEnergyArray, sizeof(float), dataEnergy);
-	*dataEnergy = 0.5 * *dataEnergy;
+	  *dataEnergy = 0.5 * *dataEnergy;
     cublasDestroy(handle);
     cudaFree(d_dataEnergyArray);
 }
 
 void computeLevelSetEnergy(float *levelSetEnergy,
                            const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
-                           const size_t width, const size_t height, const size_t depth)
+                           const bool* d_mask, const size_t width, const size_t height, const size_t depth)
 {
     float* d_levelSetEnergyArray;
     cudaMalloc(&d_levelSetEnergyArray, (width * height * depth) * sizeof(float)); CUDA_CHECK;
@@ -118,17 +133,17 @@ void computeLevelSetEnergy(float *levelSetEnergy,
 
     computeLevelSetEnergyKernel <<<grid, blockSize>>> (d_levelSetEnergyArray, 
                                                        d_gradPhiNDeformedX, d_gradPhiNDeformedY, d_gradPhiNDeformedZ,
-                                                       width, height, depth);
+                                                       d_mask, width, height, depth);
     CUDA_CHECK;
 
-    // create cublas handle
+    // Create cublas handle
     cublasHandle_t handle;
     cublasCreate(&handle);
 
-    //calculate the sum of the energy
+    // Calculate the sum of the energy
     cublasSasum(handle, width*height*depth, d_levelSetEnergyArray, sizeof(float), levelSetEnergy);
 
-    //free cuda memory and cublas handle
+    // Free cuda memory and cublas handle
     cublasDestroy(handle);
     cudaFree(d_levelSetEnergyArray);
 }
@@ -154,14 +169,14 @@ void computeKillingEnergy(float *killingEnergy, const float gamma,
                                                       width, height, depth);
     CUDA_CHECK;
 
-    // create cublas handle
+    // Create cublas handle
     cublasHandle_t handle;
     cublasCreate(&handle);
 
-    //calculate the sum of the energy
+    // Calculate the sum of the energy
     cublasSasum(handle, width*height*depth, d_killingEnergyArray, sizeof(float), killingEnergy);
 
-    //free cuda memory and cublas handle
+    // Free cuda memory and cublas handle
     cublasDestroy(handle);
     cudaFree(d_killingEnergyArray);
 }

@@ -12,7 +12,7 @@ void computeDataEnergy(float *dataEnergy, const float *d_phiNDeformed, const flo
 
 void computeLevelSetEnergy(float *levelSetEnergy,
                            const float *d_gradPhiNDeformedX, const float *d_gradPhiNDeformedY, const float *d_gradPhiNDeformedZ,
-                           const size_t width, const size_t height, const size_t depth);
+                           const bool* d_mask, const size_t width, const size_t height, const size_t depth);
 
 void computeKillingEnergy(float *killingEnergy, const float gamma,
                           const float* d_dux, const float* d_duy, const float* d_duz,

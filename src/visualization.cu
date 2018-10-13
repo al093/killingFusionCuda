@@ -49,7 +49,7 @@ void getSlice(float* sliceOut, const float* gridIn, const size_t sliceInd, const
 
 void plotSlice(const float* d_array, const size_t sliceInd, const size_t dim, const std::string imageTitle, const size_t posX, const size_t posY, const size_t w, const size_t h, const size_t d)
 {
-    
+    // Determine required size for the slice
     size_t matH, matW;
     if (dim == 0)
     {
@@ -70,14 +70,16 @@ void plotSlice(const float* d_array, const size_t sliceInd, const size_t dim, co
     float* slice = new float[matH * matW];
     cudaMemcpy(h_array, d_array, (h * w * d) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
     cv::Mat matSlice(matH, matW, CV_32F);
+    // Extact slice
     getSlice(slice, h_array, sliceInd, dim, w, h, d);
     convertLayeredToMat(matSlice, slice);
-    // Normalize the slice
+    // Normalize and resize the slice
     double min, max;
     cv::minMaxLoc(matSlice, &min, &max);
     cv::resize(matSlice, matSlice, cv::Size(), 4, 4);
     showImage(imageTitle, (matSlice - min) / (max - min), posX, posY);
-
+    imwrite( "./bin/result/" + imageTitle + ".jpg", (matSlice - min) / (max - min) * 255);
+    // Delete data structures
     delete[] slice;
     delete[] h_array;
 }
@@ -98,14 +100,14 @@ void plotVectorField(const float* d_u, const float* d_v, const float* d_w, const
     cudaMemcpy(w, d_w, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
     cudaMemcpy(sdf, d_sdf, (width*height*depth) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 
-    // save the u , v and w to disk (./bin/result)
+    // Save the u , v and w to disk (./bin/result)
     std::ofstream outU(sFileU);
     std::ofstream outV(sFileV);
     std::ofstream outW(sFileW);
     std::ofstream outSdf(sFileSdf);
 
-    //the storing should be done in such a way that python reshape can reshape it correctly
-    for (size_t idx = sliceZval*width*height; idx<(sliceZval+1)*width*height; ++idx) {
+    // The storing should be done in such a way that python reshape can reshape it correctly
+    for (size_t idx = sliceZval*width*height; idx<(sliceZval+1)*width*height; idx++) {
       outU << u[idx] << " ";
       outV << v[idx] << " ";
       outW << w[idx] << " ";
@@ -122,7 +124,7 @@ void plotVectorField(const float* d_u, const float* d_v, const float* d_w, const
     delete[] w;
     delete[] sdf;
 
-    //call python script to plot the quiver plot
+    // Call python script to plot the quiver plot
     if(system(NULL))
     {
         std::string command = "python ../src/quiverPlot2D.py " +
@@ -132,7 +134,7 @@ void plotVectorField(const float* d_u, const float* d_v, const float* d_w, const
         system(command.c_str());
     }
     else
-        std::cout<<"\nUnable to access the command prompt/ terminal. Will not be able to show deformation quiver plot";
+        std::cout << std::endl << "Unable to access the command prompt/ terminal. Will not be able to show deformation quiver plot";
 }
 
 

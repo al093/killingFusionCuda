@@ -18,6 +18,7 @@
 #include "color.h"
 
 #include <opencv2/highgui/highgui.hpp>
+#include "cublas_v2.h"
 
 Color::Modifier red(Color::FG_RED);
 Color::Modifier green(Color::FG_GREEN);
@@ -44,6 +45,9 @@ Optimizer::Optimizer(TSDFVolume* tsdfGlobal, float* initialDeformationU, float* 
 	m_maxVectorUpdateThreshold = 0.1 / (m_voxelSize * 1000.0);
     allocateMemoryInDevice();
 	copyArraysToDevice();
+
+	// Create cublas handle
+    cublasCreate(&m_handle);
 }
 
 void Optimizer::allocateMemoryInDevice()
@@ -225,6 +229,9 @@ Optimizer::~Optimizer()
     cudaFree(m_d_dfx); CUDA_CHECK;
     cudaFree(m_d_dfy); CUDA_CHECK;
     cudaFree(m_d_dfz); CUDA_CHECK;
+
+    // Destroy cublas handle
+    cublasDestroy(m_handle);
 }
 
 void Optimizer::getTSDFGlobalPtr(float* tsdfGlobalPtr)
@@ -245,9 +252,9 @@ void Optimizer::printTimes()
 	std::cout << "- computeHessian: " << 1000*m_timeComputeHessian / (float)m_nComputeHessian << " (" << m_nComputeHessian << " iterations)" <<std::endl;
 	std::cout << "- computeLaplacian: " << 1000*m_timeComputeLaplacian / (float)m_nComputeLaplacian << " (" << m_nComputeLaplacian << " iterations)" <<std::endl;
 	std::cout << "- computeDivergence: " << 1000*m_timeComputeDivergence / (float)m_nComputeDivergence << " (" << m_nComputeDivergence << " iterations)" <<std::endl;
-	std::cout << "- computeDataTermDeritavie: " << 1000*m_timeComputeDataTermDerivative / (float)m_nComputeDataTermDerivative << " (" << m_nComputeDataTermDerivative << " iterations)" <<std::endl;
+	std::cout << "- computeDataTermDerivative: " << 1000*m_timeComputeDataTermDerivative / (float)m_nComputeDataTermDerivative << " (" << m_nComputeDataTermDerivative << " iterations)" <<std::endl;
 	std::cout << "- computeLevelSetDerivative: " << 1000*m_timeComputeLevelSetDerivative / (float)m_nComputeLevelSetDerivative << " (" << m_nComputeLevelSetDerivative << " iterations)" <<std::endl;
-	std::cout << "- computeMotionRegularizerDerivatie: " << 1000*m_timeComputeMotionRegularizerDerivative / (float)m_nComputeMotionRegularizerDerivative << " (" << m_nComputeMotionRegularizerDerivative << " iterations)" <<std::endl;
+	std::cout << "- computeMotionRegularizerDerivative: " << 1000*m_timeComputeMotionRegularizerDerivative / (float)m_nComputeMotionRegularizerDerivative << " (" << m_nComputeMotionRegularizerDerivative << " iterations)" <<std::endl;
 	std::cout << "- addArray: " << 1000*m_timeAddArray / (float)m_nAddArray << " (" << m_nAddArray << " iterations)" <<std::endl;
 	std::cout << "- computeMagnitude: " << 1000*m_timeComputeMagnitude / (float)m_nComputeMagnitude << " (" << m_nComputeMagnitude << " iterations)" <<std::endl;
 	std::cout << "- findAbsMax: " << 1000*m_timeFindAbsMax / (float)m_nFindAbsMax << " (" << m_nFindAbsMax << " iterations)" <<std::endl;
@@ -259,7 +266,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 	Timer frameTimer;
 	frameTimer.start();
 	// Initialize variables
-	float currentMaxVectorUpdate = 0.01;
+	float currentMaxVectorUpdate;
 	float* tsdfLiveGrid = tsdfLive->ptrTsdf();
 	float* tsdfLiveWeights = tsdfLive->ptrTsdfWeights();
 	Timer timer;
@@ -307,7 +314,29 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
     float totalEnergyArr[1000] = {0.0};
     
     if (m_debugMode) std::cout<< "Deforming SDF..." << std::endl;
+
+    // Compute current mask
+    computeMask(m_d_mask, m_d_tsdfLiveDeform, m_gridW, m_gridH, m_gridD);
+
     size_t itr = 0;
+
+    // TEST
+    float* auxX = new float[m_gridW * m_gridH * m_gridD];
+    float* auxY = new float[m_gridW * m_gridH * m_gridD];
+    float* auxZ = new float[m_gridW * m_gridH * m_gridD];
+    cudaMemcpy(auxX, m_d_sdfDx, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+    cudaMemcpy(auxY, m_d_sdfDy, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+	cudaMemcpy(auxZ, m_d_sdfDz, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
+	for (int i = 0; i < m_gridW * m_gridH * m_gridD; i++)
+    {
+    	float norm = sqrt(auxX[i]*auxX[i] + auxY[i]*auxY[i] + auxZ[i]*auxZ[i]);
+    	if (norm != 0)
+    	{
+    		//std::cout << norm << std::endl;
+    	}
+    }
+    // TEST
+
 
     do
 	{
@@ -388,7 +417,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         m_timeComputeGradient += timer.get();
     	m_nComputeGradient += 1;
         
-        //compute motion regularizer derivative
+        // Compute motion regularizer derivative
         timer.start();
         computeMotionRegularizerDerivative(m_d_energyDu, m_d_energyDv, m_d_energyDw,
                                            m_d_lapU, m_d_lapV, m_d_lapW,
@@ -408,7 +437,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
             dataEnergyArr[itr] = dataEnergy;
 
             float levelSetEnergy = 0.0;
-            computeLevelSetEnergy(&levelSetEnergy, m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_gridW, m_gridH, m_gridD);
+            computeLevelSetEnergy(&levelSetEnergy, m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_d_mask, m_gridW, m_gridH, m_gridD);
             std::cout<< "| Level Set Energy: " << levelSetEnergy;
             levelSetEnergyArr[itr] = m_ws*levelSetEnergy;
             
@@ -457,7 +486,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         m_timeComputeMagnitude += timer.get();
     	m_nComputeMagnitude += 1;
 		timer.start();
-        findAbsMax(&currentMaxVectorUpdate, m_d_magnitude, m_gridW, m_gridH, m_gridD);
+        findAbsMax(m_handle, &currentMaxVectorUpdate, m_d_magnitude, m_gridW, m_gridH, m_gridD);
         timer.end();
         m_timeFindAbsMax += timer.get();
     	m_nFindAbsMax += 1;
@@ -537,12 +566,13 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         plotSlice(m_d_tsdfGlobal, m_gridD / 2, 2, "TSDF Global slice", 100 + 4*m_gridW, 100, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfLiveDeform, m_gridD / 2, 2, "Warped TSDF Live", 100 + 8*m_gridW, 100, m_gridW, m_gridH, m_gridD);
         /*
+        // Additional example plots
         plotSlice(m_d_tsdfLive, 50, 1, "Live TSDF Y", 100, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfLive, m_gridW / 2, 0, "Live TSDF X", 100 + 8*m_gridW, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfLiveDeform, m_gridW / 2, 0, "LiveDeform TSDF X", 100 + 4*m_gridW, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
         plotSlice(m_d_tsdfLive, m_gridW / 2, 0, "Live TSDF X", 100 + 8*m_gridW, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
-        plotSlice(m_d_tsdfLiveDeform, m_gridW / 2, 0, "LiveDeform TSDF X", 100 + 4*m_gridW, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);*/
-        
+        plotSlice(m_d_tsdfLiveDeform, m_gridW / 2, 0, "LiveDeform TSDF X", 100 + 4*m_gridW, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
+        */
         // Plot the deformation for only one slice along the Z axis, so currently the W deformation field is not used
         plotVectorField(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLive, m_gridD/2,
                         "./bin/result/u.txt", "./bin/result/v.txt", "./bin/result/w.txt", "./bin/result/weights.txt", "Deformation_Field",

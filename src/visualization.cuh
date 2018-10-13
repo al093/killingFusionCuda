@@ -1,7 +1,6 @@
 // ########################################################################
 // Practical Course: GPU Programming in Computer Vision
 // Technical University of Munich, Computer Vision Group
-// defines the host functions which call the device functions kernels for calculating the energy
 // ########################################################################
 
 #ifndef VISUALIZATION_H

@@ -18,8 +18,8 @@ TSDFVolume::TSDFVolume(const Vec3i &dimensions, const Vec3f &size, const Mat3f &
     m_colorG(0),
     m_colorB(0),
     m_weightsColor(0),
-    m_delta(0.05f),
-    m_deltaInv(1.0f / m_delta),
+    m_delta(0.05f), //change both delta and delta inverse.
+    m_deltaInv(1.0f / 0.05f),
     m_K(K),
     m_frameNumber(frameNumber)
 {
@@ -88,7 +88,7 @@ float TSDFVolume::truncate(float sdf) const
         tsdf = m_delta;
     else if (tsdf < -m_delta)
         tsdf = -m_delta;
-    return tsdf * m_deltaInv;   // normalize tsdf value to interval [-1.0,...,1.0]
+    return tsdf;// * m_deltaInv;   // normalize tsdf value to interval [-1.0,...,1.0]
 }
 
 
@@ -159,12 +159,10 @@ void TSDFVolume::integrate(const Mat4f &pose, const cv::Mat &color, const cv::Ma
                     else if (sdfVal <= m_delta)
                     {
                         // constant weighting function
-                        //wTsdf = 1.0f;
+                        // wTsdf = 1.0f;
                         // linear weighting function
-//                        wTsdf = (tsdfVal + 1.0f) / 2.0f;
-                        wTsdf = 1.0f - tsdfVal;
-
-                        // TODO normal based weighting
+                        // wTsdf = (tsdfVal + 1.0f) / 2.0f;
+                        wTsdf = 1.0f - tsdfVal * m_deltaInv;
                     }
 
                     float wTsdfNew = 0.0f;
