@@ -39,7 +39,7 @@ void computeLevelSetEnergyKernel(float *d_levelSetEnergyArray,
     {
         size_t idx = x + y*width + z*width*height;
         float norm = sqrt(pow(d_gradPhiNDeformedX[idx], 2) + pow(d_gradPhiNDeformedY[idx], 2) + pow(d_gradPhiNDeformedZ[idx], 2));
-        d_levelSetEnergyArray[idx] = 0.5 * pow((norm - 1), 2);
+        d_levelSetEnergyArray[idx] = 0.5 * pow((norm - 1.0/0.05), 2);
     }
 }
 

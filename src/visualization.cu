@@ -128,8 +128,48 @@ void plotVectorField(const float* d_u, const float* d_v, const float* d_w, const
         std::string command = "python ../src/quiverPlot2D.py " +
                                sFileU + " " + sFileV + " " + sFileW + " " +
                                sFileSdf + " " + sPlotName + " " + std::to_string(frameNumber);
+
         system(command.c_str());
     }
     else
         std::cout<<"\nUnable to access the command prompt/ terminal. Will not be able to show deformation quiver plot";
+}
+
+
+void plotEnergy(const float* data, const float* levelSet, const float* killing,
+                     const float* total, const size_t arraySize,
+                     const std::string sFileData, const std::string sFileLevelSet, const std::string sFileKilling,
+                     const std::string sFileTotal, const std::string sPlotName, const int frameNumber,
+                     const size_t width, const size_t height, const size_t depth)
+{
+
+    // save the energies to disk (./bin/result)
+    std::ofstream outData(sFileData);
+    std::ofstream outLevelSet(sFileLevelSet);
+    std::ofstream outKilling(sFileKilling);
+    std::ofstream outTotal(sFileTotal);
+
+    for (size_t idx = 0; idx<=arraySize; ++idx) {
+      outData << data[idx] << " ";
+      outLevelSet << levelSet[idx] << " ";
+      outKilling << killing[idx] << " ";
+      outTotal << total[idx] << " ";
+    }
+
+    outData.close();
+    outLevelSet.close();
+    outKilling.close();
+    outTotal.close();
+
+    //call python script to plot the quiver plot
+    if(system(NULL))
+    {
+        std::string command = "python ../src/energyPlot.py " +
+                               sFileData + " " + sFileLevelSet + " " + sFileKilling + " " +
+                               sFileTotal + " " + sPlotName + " " + std::to_string(frameNumber);
+
+        system(command.c_str());
+    }
+    else
+        std::cout<<"\nUnable to access the command prompt/ terminal. Will not be able to show/write Energy Plots ";
 }

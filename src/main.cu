@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     // parse command line parameters
     const char *params = {
         "{i|input| |input rgb-d sequence}"
-        "{f|frames|10000|number of frames to process (0=all)}"
+        "{f|end|10000|last frame to process (0=all)}"
         "{n|iterations|100|max number of GD iterations}"
         "{a|alpha|0.1|Gradient Descent step size}"
         "{b|begin|0|First frame id to begin with}"
@@ -115,9 +115,9 @@ int main(int argc, char *argv[])
     }
     std::cout << "input sequence: " << inputSequence << std::endl;
 
-    // number of frames to process
-    size_t frames = (size_t)cmd.get<int>("frames");
-    std::cout << "# frames: " << frames << std::endl;
+    // last frame Id
+    size_t lastFrameId = (size_t)cmd.get<int>("end");
+    std::cout << "Last Frame of s`equence: " << lastFrameId << std::endl;
 
     // max number of GD iterations
     size_t iterations = (size_t)cmd.get<int>("iterations");
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     float alpha = (float)cmd.get<float>("alpha");
     std::cout << "Gradient Descent step: " << alpha << std::endl;
 
-    // First frame id
+    // First frame Id
     size_t firstFrameId = (size_t)cmd.get<int>("begin");
     std::cout << "First frame of sequence: " << firstFrameId << std::endl;
 
@@ -173,9 +173,9 @@ int main(int argc, char *argv[])
 
     for (size_t i = 0; i < gridW*gridH*gridD; i++)
     {
-        deformationU[i] = 4.56f;
-        deformationV[i] = -14.37f; 
-        deformationW[i] = 0.0f;   
+        deformationU[i] = 0.0f;
+        deformationV[i] = 0.0f;
+        deformationW[i] = 0.0f;
     }
     
 	Optimizer* optimizer;
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
     // process frames
     Mat4f poseVolume = Mat4f::Identity();
     cv::Mat color, depth, mask;
-    for (size_t i = firstFrameId; i < frames; ++i)
+    for (size_t i = firstFrameId; i <= lastFrameId; ++i)
     {
         tsdfLive = new TSDFVolume(volDim, volSize, K, i);
         std::cout << "Working on frame: " << i;
@@ -262,7 +262,8 @@ int main(int argc, char *argv[])
 
     // Clean up
     delete tsdfGlobal;
-	delete optimizer;
+    if(optimizer) delete optimizer;
+
     cv::destroyAllWindows();
 
     return 0;

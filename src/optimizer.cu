@@ -300,6 +300,12 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 											HESSIAN OF PHIn IS: m_d_hessXX, m_d_hessXY, m_d_hessXZ, m_d_hessYY, m_d_hessYZ, m_d_hessZZ
 	*/
 
+    //used while debug mode to save the energies for plotting
+    float dataEnergyArr[1000] = {0.0};
+    float killingEnergyArr[1000] = {0.0};
+    float levelSetEnergyArr[1000] = {0.0};
+    float totalEnergyArr[1000] = {0.0};
+    
     if (m_debugMode) std::cout<< "Deforming SDF..." << std::endl;
     size_t itr = 0;
 
@@ -308,7 +314,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         itr = itr + 1;
         if(m_debugMode) std::cout << std::endl << "GD itr num: " << itr;
         
-		// Interpolate TSDF Live Frame (EXAMPLE: HOW TO INTERPOLATE PHIn DEFORMED BY PSI)
+		// Interpolate TSDF Live Frame
 		interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 		
         // Interpolate the gradient of Phi_n wrt the psi
@@ -324,7 +330,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         interpHessYZ->interpolate3D(m_d_hessYZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         interpHessZZ->interpolate3D(m_d_hessZZDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
 
-        // Set m_d_energyDu/v/w intially to zero
+        // Set m_d_energyDu/v/w initially to zero
         cudaMemset(m_d_energyDu, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
         cudaMemset(m_d_energyDv, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
         cudaMemset(m_d_energyDw, 0, (m_gridW * m_gridH * m_gridD) * sizeof(float)); CUDA_CHECK;
@@ -374,6 +380,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         timer.end();
         m_timeComputeDivergence += timer.get();
     	m_nComputeDivergence += 1;
+
     	// Compute the gradients of the divergence of deformation field
     	timer.start();
         computeGradient(m_d_divX, m_d_divY, m_d_divZ, m_d_div, m_gridW, m_gridH, m_gridD);
@@ -398,11 +405,13 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
             float dataEnergy = 0.0;
             computeDataEnergy(&dataEnergy, m_d_tsdfLiveDeform, m_d_tsdfGlobal, m_gridW, m_gridH, m_gridD);
             std::cout<< "| Data Term Energy: " << dataEnergy;
+            dataEnergyArr[itr] = dataEnergy;
 
             float levelSetEnergy = 0.0;
             computeLevelSetEnergy(&levelSetEnergy, m_d_sdfDxDeform, m_d_sdfDyDeform, m_d_sdfDzDeform, m_gridW, m_gridH, m_gridD);
             std::cout<< "| Level Set Energy: " << levelSetEnergy;
-
+            levelSetEnergyArr[itr] = m_ws*levelSetEnergy;
+            
             // Find the energy of the Killing term
             computeGradient(m_d_dux, m_d_duy, m_d_duz, m_d_deformationFieldU, m_gridW, m_gridH, m_gridD);
             computeGradient(m_d_dvx, m_d_dvy, m_d_dvz, m_d_deformationFieldV, m_gridW, m_gridH, m_gridD);
@@ -415,6 +424,9 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
                                   m_d_dwx, m_d_dwy, m_d_dwz,
                                   m_gridW, m_gridH, m_gridD);
             std::cout<< "| Killing Energy: " << killingEnergy;
+            killingEnergyArr[itr] = m_wk*killingEnergy;
+
+            totalEnergyArr[itr] = dataEnergyArr[itr] + levelSetEnergyArr[itr] + killingEnergyArr[itr];
         }
 
         // Interpolate current frame weights
@@ -483,6 +495,12 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
     if(m_debugMode)
     {
+        
+        //plot the total and individual energy decay
+        plotEnergy(dataEnergyArr, levelSetEnergyArr, killingEnergyArr, totalEnergyArr, itr,
+                        "./bin/result/dataEnergy.txt", "./bin/result/levelSetEnergy.txt", "./bin/result/killingEnergy.txt", "./bin/result/totalEnergy.txt", "Energy",
+                        tsdfLive->getFrameNumber(), m_gridW, m_gridH, m_gridD);
+                        
         Vec3i volDim(m_gridW, m_gridH, m_gridD);
         Vec3f volSize(m_gridW*m_voxelSize, m_gridH*m_voxelSize, m_gridD*m_voxelSize);
 
@@ -490,14 +508,10 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         float* sdf = (float*)calloc(m_gridW*m_gridH*m_gridD, sizeof(float));
         float* sdfWeights = (float*)calloc(m_gridW*m_gridH*m_gridD, sizeof(float));
 
-
         cudaMemcpy(sdf, m_d_tsdfLiveDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-
         cudaMemcpy(sdfWeights, m_d_tsdfLiveWeightsDeform, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
 
-
         mc.computeIsoSurface(sdf, sdfWeights, tsdfLive->ptrColorR(), tsdfLive->ptrColorG(), tsdfLive->ptrColorB());
-
         std::string meshFilename = "./bin/result/mesh_warped_" + std::to_string(tsdfLive->getFrameNumber()) + ".ply";
 
         if (!mc.savePly(meshFilename))
@@ -531,7 +545,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         
         // Plot the deformation for only one slice along the Z axis, so currently the W deformation field is not used
         plotVectorField(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLive, m_gridD/2,
-                        "./bin/result/u.txt", "./bin/result/v.txt", "./bin/result/w.txt", "./bin/result/weights.txt", "deformation_field",
+                        "./bin/result/u.txt", "./bin/result/v.txt", "./bin/result/w.txt", "./bin/result/weights.txt", "Deformation_Field",
                         tsdfLive->getFrameNumber(), m_gridW, m_gridH, m_gridD);
         cv::waitKey(30);
     }
@@ -609,23 +623,23 @@ void Optimizer::computeLaplacian(float* lapOut, float* dOut, const size_t dOutCo
 	if (dOutComponent == 0)
 	{
 		computeGradient3DX(dOut, deformationIn, w, h, d);
-		computeGradient3DY(m_d_duy, deformationIn, w, h, d);
-		computeGradient3DZ(m_d_duz, deformationIn, w, h, d);
-		computeDivergence(lapOut, dOut, m_d_duy, m_d_duz, w, h, d);
+		computeGradient3DY(m_d_dfy, deformationIn, w, h, d);
+		computeGradient3DZ(m_d_dfz, deformationIn, w, h, d);
+		computeDivergence(lapOut, dOut, m_d_dfy, m_d_dfz, w, h, d);
 	}
 	else if (dOutComponent == 1)
 	{
-		computeGradient3DX(m_d_dvx, deformationIn, w, h, d);
+		computeGradient3DX(m_d_dfx, deformationIn, w, h, d);
 		computeGradient3DY(dOut, deformationIn, w, h, d);
-		computeGradient3DZ(m_d_dvz, deformationIn, w, h, d);
-		computeDivergence(lapOut, m_d_dvx, dOut, m_d_dvz, w, h, d);
+		computeGradient3DZ(m_d_dfz, deformationIn, w, h, d);
+		computeDivergence(lapOut, m_d_dfx, dOut, m_d_dfz, w, h, d);
 	}
 	else
 	{
-		computeGradient3DX(m_d_dwx, deformationIn, w, h, d);
-		computeGradient3DY(m_d_dwy, deformationIn, w, h, d);
+		computeGradient3DX(m_d_dfx, deformationIn, w, h, d);
+		computeGradient3DY(m_d_dfy, deformationIn, w, h, d);
 		computeGradient3DZ(dOut, deformationIn, w, h, d);
-		computeDivergence(lapOut, m_d_dwx, m_d_dwy, dOut, w, h, d);
+		computeDivergence(lapOut, m_d_dfx, m_d_dfy, dOut, w, h, d);
 	}
 }
 

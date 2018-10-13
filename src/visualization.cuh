@@ -18,5 +18,11 @@ void plotVectorField(const float* d_u, const float* d_v, const float* d_w,
                      const std::string sFileU, const std::string sFileV, const std::string sFileW,
                      const std::string sFileWeights, const std::string sPlotName, const int frameNumber,
                      const size_t width, const size_t height, const size_t depth);
+                     
+void plotEnergy(const float* data, const float* levelSet, const float* killing,
+                     const float* total, const size_t arraySize,
+                     const std::string sFileData, const std::string sFileLevelSet, const std::string sFileKilling,
+                     const std::string sFileTotal, const std::string sPlotName, const int frameNumber,
+                     const size_t width, const size_t height, const size_t depth);
 
 #endif

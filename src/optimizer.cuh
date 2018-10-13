@@ -114,6 +114,7 @@ protected:
 	float* m_d_magnitude = NULL;
 
     // Mask - only near surface regions deformation is to be calculated.
+    // Not used 
     bool* m_d_mask = NULL;
 
     // Gradients of energy
