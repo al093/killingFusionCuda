@@ -112,9 +112,9 @@ void addWeightedArrayKernel(float* arrayOut, float* weightOut, const float* arra
     {
         size_t idx = x + y*width + z*width*height;
         float sumWeights = weight1[idx] + weight2[idx];
-        if (sumWeights < 1e-6)
+        if (arrayIn1[idx] == -1 && arrayIn2[idx] == -1)
         {
-            arrayOut[idx] = 1.0;
+            arrayOut[idx] = -1;
         }
         else
         {
