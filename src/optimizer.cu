@@ -262,6 +262,7 @@ void Optimizer::printTimes()
 	std::cout << "- computeMagnitude: " << 1000*m_timeComputeMagnitude / (float)m_nComputeMagnitude << " (" << m_nComputeMagnitude << " iterations)" <<std::endl;
 	std::cout << "- findAbsMax: " << 1000*m_timeFindAbsMax / (float)m_nFindAbsMax << " (" << m_nFindAbsMax << " iterations)" <<std::endl;
 	std::cout << "- addWeightedArray: " << 1000*m_timeAddWeightedArray / (float)m_nAddWeightedArray << " (" << m_nAddWeightedArray << " iterations)" <<std::endl;
+	std::cout << "- interpolation: " << 1000*m_interpolation / (float)m_nInterpolation << " (" << m_nInterpolation << " iterations)" <<std::endl;
 }
 
 void Optimizer::optimize(TSDFVolume* tsdfLive)
@@ -329,8 +330,12 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         if(m_debugMode) std::cout << std::endl << "GD itr num: " << itr;
         
 		// Interpolate TSDF Live Frame
-		interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
-		
+        timer.start();
+        interpTSDFLive->interpolate3D(m_d_tsdfLiveDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
+        timer.end();
+        m_interpolation += timer.get();
+        m_nInterpolation += 1;
+        
         // Interpolate the gradient of Phi_n wrt the psi
         interpTSDFDx->interpolate3D(m_d_sdfDxDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
         interpTSDFDy->interpolate3D(m_d_sdfDyDeform, m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_gridW, m_gridH, m_gridD);
