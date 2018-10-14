@@ -17,7 +17,8 @@ Place the camera intrinsics file in <repo>/data/snoopy
 
 Create a result folder at <repo>/build/bin/result to save the final meshes. It has to be this path, because it is hardcoded for now.  
 
-Finally run the optimization 
+Finally run the optimization:
+
 ./bin/killingfusion -i ../data/hand/ -b 2 -f 22 -n 1000 -wk 0.1 -ws 0.05 -a 0.1
 
 Details about the input flags
