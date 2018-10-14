@@ -55,4 +55,4 @@ x, y, z = np.meshgrid(np.arange(0, dim, 1),
 
 ax.quiver(y, z, x, v, w, u, length=1, color = colormap(norm(lengths)))
 
-plt.show()
+#plt.show()

@@ -20,7 +20,6 @@ if(len(sys.argv) == 7):
     frameNumber = sys.argv[6]
     saveImg = True;
 
-zSlice = 40
 dim = 80;
 
 u = np.loadtxt(fileU)
@@ -49,9 +48,9 @@ sm = cm.ScalarMappable(cmap=cm1, norm=norm)
 sm.set_array([])
 
 plt.figure()
-plt.title(figureName)
+#plt.title(figureName)
 q = plt.quiver(x, y, u, v, units='xy', scale=1, angles='xy', scale_units='xy', color=cm1(norm(sdf)))
-plt.colorbar(sm)
+#plt.colorbar(sm)
 
 ax = plt.gca()
 ax.invert_yaxis()
@@ -63,4 +62,4 @@ if saveImg:
     imageName = resultsDir + str(figureName.replace(".txt", "_")) + str(frameNumber)+ ".png"
     plt.savefig(imageName, format='png', dpi=1000)
 
-plt.show()
+# plt.show()

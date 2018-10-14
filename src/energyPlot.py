@@ -23,12 +23,19 @@ if(len(sys.argv) == 7):
 data = np.loadtxt(fileData)
 levelSet = np.loadtxt(fileLevelSet)
 killing = np.loadtxt(fileKilling)
-total = np.loadtxt(fileTotal)
+#total = np.loadtxt(fileTotal)
 
-plt.plot(data[1:], 'r')
-plt.plot(levelSet[1:], 'g')
-plt.plot(killing[1:], 'b')
-plt.plot(total[1:], 'k')
+#divide Level Set energy by 10
+#levelSet = levelSet/10.0
+
+#calculate the total level set energy again with scaled values values.
+total = data + levelSet + killing;
+
+plt.plot(data[1:], '-r', label='Data Term Energy')
+plt.plot(levelSet[1:], '-g', label='Level Set Energy')
+plt.plot(killing[1:], '-b', label='Killing Term Energy')
+plt.plot(total[1:], '-k', label='Total Energy')
+plt.legend()
 
 resultsDir = "./bin/result/"
 

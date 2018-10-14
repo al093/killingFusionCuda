@@ -10,6 +10,7 @@
 #include "helper.cuh"
 #include "energy.cuh"
 #include "energyDerivatives.cuh"
+#include "gridOperations.cuh"
 #include "interpolator.cuh"
 #include "reduction.cuh"
 #include "magnitude.cuh"
@@ -322,24 +323,6 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
 
     size_t itr = 0;
 
-    // TEST
-    float* auxX = new float[m_gridW * m_gridH * m_gridD];
-    float* auxY = new float[m_gridW * m_gridH * m_gridD];
-    float* auxZ = new float[m_gridW * m_gridH * m_gridD];
-    cudaMemcpy(auxX, m_d_sdfDx, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-    cudaMemcpy(auxY, m_d_sdfDy, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-	cudaMemcpy(auxZ, m_d_sdfDz, (m_gridW * m_gridH * m_gridD) * sizeof(float), cudaMemcpyDeviceToHost); CUDA_CHECK;
-	for (int i = 0; i < m_gridW * m_gridH * m_gridD; i++)
-    {
-    	float norm = sqrt(auxX[i]*auxX[i] + auxY[i]*auxY[i] + auxZ[i]*auxZ[i]);
-    	if (norm != 0)
-    	{
-    		//std::cout << norm << std::endl;
-    	}
-    }
-    // TEST
-
-
     do
 	{
         itr = itr + 1;
@@ -461,6 +444,7 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
             killingEnergyArr[itr] = killingEnergy;
 
             totalEnergyArr[itr] = dataEnergyArr[itr] + levelSetEnergyArr[itr] + killingEnergyArr[itr];
+            std::cout<< "| Total Energy: " << totalEnergyArr[itr];
         }
 
         // Interpolate current frame weights
@@ -579,9 +563,15 @@ void Optimizer::optimize(TSDFVolume* tsdfLive)
         plotSlice(m_d_tsdfLiveDeform, m_gridW / 2, 0, "LiveDeform TSDF X", 100 + 4*m_gridW, 100 + 8*m_gridH, m_gridW, m_gridH, m_gridD);
         */
         // Plot the deformation for only one slice along the Z axis, so currently the W deformation field is not used
-        plotVectorField(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLive, m_gridD/2,
-                        "./bin/result/u.txt", "./bin/result/v.txt", "./bin/result/w.txt", "./bin/result/weights.txt", "Deformation_Field",
-                        tsdfLive->getFrameNumber(), m_gridW, m_gridH, m_gridD);
+        //if(tsdfLive->getFrameNumber() >= 343)
+        //{
+        //    for (size_t slice = 0; slice < 80; ++slice)
+        //    {
+                plotVectorField(m_d_deformationFieldU, m_d_deformationFieldV, m_d_deformationFieldW, m_d_tsdfLive, m_gridD/2,
+                                "./bin/result/u.txt", "./bin/result/v.txt", "./bin/result/w.txt", "./bin/result/weights.txt", "Deformation_Field",
+                                tsdfLive->getFrameNumber()/**100+slice*/, m_gridW, m_gridH, m_gridD);
+        //    }
+        //}
         cv::waitKey(30);
     }
 

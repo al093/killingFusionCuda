@@ -39,7 +39,7 @@ void getSlice(float* sliceOut, const float* gridIn, const size_t sliceInd, const
     // Z dimension
     else
     {
-        for(int i = 0; i < w*h; i++)
+        for(size_t i = 0; i < w*h; i++)
         {
             sliceOut[i] = gridIn[i + (w*h) * sliceInd];
         }
@@ -131,7 +131,7 @@ void plotVectorField(const float* d_u, const float* d_v, const float* d_w, const
                                sFileU + " " + sFileV + " " + sFileW + " " +
                                sFileSdf + " " + sPlotName + " " + std::to_string(frameNumber);
 
-        system(command.c_str());
+        auto retVal = system(command.c_str());
     }
     else
         std::cout << std::endl << "Unable to access the command prompt/ terminal. Will not be able to show deformation quiver plot";
@@ -170,7 +170,7 @@ void plotEnergy(const float* data, const float* levelSet, const float* killing,
                                sFileData + " " + sFileLevelSet + " " + sFileKilling + " " +
                                sFileTotal + " " + sPlotName + " " + std::to_string(frameNumber);
 
-        system(command.c_str());
+        auto retVal = system(command.c_str());
     }
     else
         std::cout<<"\nUnable to access the command prompt/ terminal. Will not be able to show/write Energy Plots ";

@@ -99,6 +99,7 @@ CUDA_ADD_EXECUTABLE(${APP_NAME}
         src/optimizer.cuh src/optimizer.cu
         src/energyDerivatives.cuh src/energyDerivatives.cu
         src/energy.cuh src/energy.cu
+        src/gridOperations.cuh src/gridOperations.cu
         src/reduction.cuh src/reduction.cu
         src/interpolator.cuh src/interpolator.cu
         src/mat.h
