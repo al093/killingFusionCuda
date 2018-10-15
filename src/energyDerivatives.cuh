@@ -1,7 +1,12 @@
 // ########################################################################
 // Practical Course: GPU Programming in Computer Vision
 // Technical University of Munich, Computer Vision Group
-// defines the host functions which call the device functions kernels for calculating the energy derivatives
+// Authors: Alok Vermaal, Alok.Verma@cs.tum.edu
+//          Julio Oscanoa, julio.oscanoa@tum.de
+//          Miguel Trasobares, miguel.trasobares@tum.de
+// Supervisors: Robert Maier, robert.maier@in.tum.de
+//              Christiane Sommer, sommerc@in.tum.de
+// Computes the energy derivatives for Killing fusion
 // ########################################################################
 
 #ifndef ENERGY_DERIVATIVES_2_H
@@ -26,16 +31,4 @@ void computeMotionRegularizerDerivative(float *d_dEdataU, float *d_dEdataV, floa
                                         const float *d_divX, const float *d_divY, const float *d_divZ,
                                         const bool *d_mask, const float wk, const float gamma,
                                         const size_t width, const size_t height, const size_t depth);
-
-void addArray(float* d_arrayA, const float* d_arrayB, const float scalar,
-              const size_t width, const size_t height, const size_t depth);
-
-void addWeightedArray(float* arrayOut, float* weightOut, const float* arrayIn1, const float* arrayIn2,
-					  const float* weight1, const float* weight2, const size_t width, const size_t height, const size_t depth);
-
-void multiplyArrays(float* arrayOut, const float* arrayIn1, const float* arrayIn2,
-            const size_t width, const size_t height, const size_t depth);
-
-void thresholdArray(float* arrayOut, const float* arrayIn, const float threshold,
-            const size_t width, const size_t height, const size_t depth);
 #endif
