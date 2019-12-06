@@ -1,6 +1,10 @@
 CUDA Implementation of Killing Fusion, from the [paper](http://campar.in.tum.de/pub/slavcheva2017cvpr/slavcheva2017cvpr.pdf)
 
+![](hand.gif)
+![](hand3d.png)
+
 For a short intro about Killing Fusion and its demo, see [slides](https://docs.google.com/presentation/d/1TBgLGjWb0qFnOnu62y5gTrjaQ_Zr7RKKAt6vqLHQEuc/edit?usp=sharing)
+
 
 To build the code, from the repository folder perform the following steps: 
 
